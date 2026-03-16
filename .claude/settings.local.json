@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find d:/Yogesh/E-BOOK/backend -name seed* -o -name *seed*)",
+      "Bash(python3 -c \":*)",
+      "Bash(node --check d:/Yogesh/E-BOOK/backend/src/seeds/seed.js)",
+      "Bash(node src/seeds/seed.js)",
+      "Bash(node --check d:/Yogesh/E-BOOK/backend/src/modules/reader/reader.controller.js)",
+      "Bash(node --check d:/Yogesh/E-BOOK/backend/src/modules/reader/reader.routes.js)",
+      "Bash(grep -rn '\\\\$[0-9]' d:/Yogesh/E-BOOK/mobile/ --include=\"*.tsx\" --include=\"*.ts\")",
+      "Bash(node -e \"const m = require\\(''multer-s3''\\); console.log\\(''AUTO_CONTENT_TYPE:'', m.AUTO_CONTENT_TYPE\\); console.log\\(''version:'', require\\(''./node_modules/multer-s3/package.json''\\).version\\)\")"
+    ],
+    "additionalDirectories": [
+      "d:\\Yogesh\\E-BOOK\\mobile\\app\\book"
+    ]
+  }
+}

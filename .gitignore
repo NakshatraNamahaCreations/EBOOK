@@ -1,0 +1,32 @@
+# Global ignore list
+node_modules/
+.env
+
+# MacOS
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# Backend specific
+backend/node_modules/
+backend/.env
+backend/public/images/
+backend/*.log
+backend/dist/
+backend/coverage/
+
+# Frontend specific
+admin-panel/node_modules/
+admin-panel/.env
+admin-panel/dist/
+admin-panel/build/
+
+# Mobile specific
+mobile/node_modules/
+mobile/.expo/
+mobile/.env
+mobile/android/
+mobile/ios/
