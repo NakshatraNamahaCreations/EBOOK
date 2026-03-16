@@ -25,6 +25,7 @@ export const authService = {
 
     await storage.setItem('auth_token', data.access_token);
     await storage.setItem('user_id', data.user.id);
+    await storage.setItem('login_time', Date.now().toString());
 
     return data;
   },
@@ -40,10 +41,20 @@ export const authService = {
   async logout() {
     await storage.removeItem('auth_token');
     await storage.removeItem('user_id');
+    await storage.removeItem('login_time');
   },
 
   async getStoredToken() {
     return await storage.getItem('auth_token');
+  },
+
+  async isSessionValid() {
+    const token = await storage.getItem('auth_token');
+    if (!token) return false;
+    const loginTime = await storage.getItem('login_time');
+    if (!loginTime) return false;
+    const ONE_DAY = 24 * 60 * 60 * 1000;
+    return Date.now() - parseInt(loginTime) < ONE_DAY;
   },
 
   async getStoredUserId() {

@@ -46,6 +46,8 @@ export interface Chapter {
   description?: string;
   estimated_read_time?: number;
   narrator?: string;
+  is_unlocked?: boolean;
+  access_reason?: string;
 }
 
 export interface Content {

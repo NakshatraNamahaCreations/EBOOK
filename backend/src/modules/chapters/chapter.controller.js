@@ -110,8 +110,8 @@ const authorUpdateChapter = asyncHandler(async (req, res) => {
 // ─── Reader Controllers ──────────────────────────────────
 
 const readerGetChapterContent = asyncHandler(async (req, res) => {
-  const userId = req.user ? req.user._id : null;
-  const data = await chapterService.getChapterContent(req.params.chapterId, userId);
+  const userDoc = req.user || null; // full Mongoose document (from optionalAuth)
+  const data = await chapterService.getChapterContent(req.params.chapterId, userDoc);
   success(res, data);
 });
 

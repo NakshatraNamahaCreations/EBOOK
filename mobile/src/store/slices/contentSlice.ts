@@ -92,6 +92,7 @@ const contentSlice = createSlice({
     removeFromLibrary: (state, action: PayloadAction<string>) => {
       state.library = state.library.filter((item) => item.id !== action.payload);
     },
+    resetContent: () => initialState,
   },
   extraReducers: (builder) => {
     builder
@@ -124,5 +125,5 @@ const contentSlice = createSlice({
   },
 });
 
-export const { clearError, addToWishlist, removeFromWishlist, addToLibrary, removeFromLibrary } = contentSlice.actions;
+export const { clearError, addToWishlist, removeFromWishlist, addToLibrary, removeFromLibrary, resetContent } = contentSlice.actions;
 export default contentSlice.reducer;

@@ -27,7 +27,8 @@ import { typography } from '../../src/theme/typography';
 import { spacing } from '../../src/theme/spacing';
 import { useAppDispatch } from '../../src/hooks/useAppDispatch';
 import { useAppSelector } from '../../src/hooks/useAppSelector';
-import { logout } from '../../src/store/slices/authSlice';
+import { resetStore } from '../../src/store/store';
+import { authService } from '../../src/services/auth.service';
 import { useTheme } from '../../src/theme/ThemeContext';
 
 const LANG_LABELS: Record<string, string> = {
@@ -76,8 +77,18 @@ export default function ProfileScreen() {
         text: 'Logout',
         style: 'destructive',
         onPress: async () => {
-          await dispatch(logout());
-          router.replace('/splash');
+          try {
+            // Clear everything first
+            await authService.logout();   // storage
+            dispatch(resetStore());       // Redux
+            
+            // Then navigate
+            router.replace('/login');
+          } catch (error) {
+            console.error('Logout error:', error);
+            // Fallback: navigate anyway to unstick the user
+            router.replace('/login');
+          }
         },
       },
     ]);
@@ -145,7 +156,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.push('/profile/edit')}>
             <View style={styles.avatarContainer}>

@@ -21,7 +21,7 @@ import { verifyOTP } from '../src/store/slices/authSlice';
 export default function VerifyOTPScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const params = useLocalSearchParams<{ mobileNumber: string; countryCode: string }>();
+  const params = useLocalSearchParams<{ mobileNumber: string; countryCode: string; otp?: string }>();
   
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
@@ -116,6 +116,12 @@ export default function VerifyOTPScreen() {
               Enter the 6-digit code sent to{' \n'}
               {params.countryCode} {params.mobileNumber}
             </Text>
+            {params.otp ? (
+              <View style={styles.otpDebugBox}>
+                <Text style={styles.otpDebugLabel}>🧪 Test OTP</Text>
+                <Text style={styles.otpDebugValue}>{params.otp}</Text>
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.otpContainer}>
@@ -197,6 +203,27 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  otpDebugBox: {
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    backgroundColor: '#1a2a1a',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#4caf50',
+    alignItems: 'center',
+  },
+  otpDebugLabel: {
+    ...typography.caption,
+    color: '#4caf50',
+    marginBottom: 2,
+  },
+  otpDebugValue: {
+    ...typography.h2,
+    color: '#4caf50',
+    letterSpacing: 6,
+    fontWeight: 'bold',
   },
   otpContainer: {
     flexDirection: 'row',

@@ -31,4 +31,7 @@ router.get('/progress', authenticate, readerController.getProgress);
 router.get('/progress/:contentId', authenticate, readerController.getProgressByContent);
 router.post('/progress', authenticate, readerController.saveProgress);
 
+// ─── Chapter Unlock Status (Authenticated) ────────────────────
+router.get('/books/:bookId/chapter-status', authenticate, readerController.getChapterUnlockStatus);
+
 module.exports = router;

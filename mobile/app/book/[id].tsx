@@ -14,10 +14,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { typography } from '../../src/theme/typography';
 import { spacing } from '../../src/theme/spacing';
 import { contentService } from '../../src/services/content.service';
-import { Content, AccessType } from '../../src/types';
+import { walletService } from '../../src/services/wallet.service';
+import { Content, AccessType, Chapter, User } from '../../src/types';
 import { useAppSelector } from '../../src/hooks/useAppSelector';
 import { useAppDispatch } from '../../src/hooks/useAppDispatch';
 import { addToWishlist, removeFromWishlist, addToLibrary, removeFromLibrary } from '../../src/store/slices/contentSlice';
+import { updateCoinBalance } from '../../src/store/slices/authSlice';
 import { LoadingScreen } from '../../src/components/layout/LoadingScreen';
 import { Button } from '../../src/components/buttons/Button';
 import { useTheme } from '../../src/theme/ThemeContext';
@@ -32,6 +34,7 @@ export default function BookDetailScreen() {
   const library = useAppSelector((state) => state.content.library);
   const [book, setBook] = useState<Content | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const inWishlist = wishlist.some((item) => item.id === id);
   const inLibrary = library.some((item) => item.id === id);
@@ -41,6 +44,19 @@ export default function BookDetailScreen() {
   const loadBook = async () => {
     try {
       const data = await contentService.getContentById(id);
+      
+      // If user is logged in, also fetch individual chapter unlock statuses
+      if (user) {
+        try {
+          const statusRes = await contentService.getChapterStatus(id);
+          if (statusRes && Array.isArray(statusRes.data)) {
+            data.chapters = statusRes.data;
+          }
+        } catch (e) {
+          console.error("Could not fetch chapter statuses", e);
+        }
+      }
+
       setBook(data);
     } catch {
       Alert.alert('Error', 'Failed to load book details');
@@ -51,24 +67,71 @@ export default function BookDetailScreen() {
 
   const handleRead = () => {
     if (!book) return;
-    if (book.access_type === AccessType.COINS && book.coin_price > (user?.coin_balance || 0)) {
-      Alert.alert('Insufficient Coins', `You need ${book.coin_price} coins to unlock this book.`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Buy Coins', onPress: () => router.push('/wallet') },
-      ]);
-      return;
-    }
-    if (book.access_type === AccessType.PREMIUM && !user?.is_premium) {
-      Alert.alert('Premium Required', 'This book is available only for premium members.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Go Premium', onPress: () => router.push('/subscription') },
-      ]);
-      return;
-    }
     if (book.chapters && book.chapters.length > 0) {
-      router.push({ pathname: '/reader/[id]', params: { id: book.id, chapterId: book.chapters[0].id } });
+      handleChapterPress(book.chapters[0]);
     } else {
       Alert.alert('Coming Soon', 'This book has no chapters yet.');
+    }
+  };
+
+  const handleChapterPress = (chapter: Chapter) => {
+    if (!book) return;
+
+    // Check if we already fetched access stats via API
+    if (chapter.is_unlocked !== undefined) {
+      if (chapter.is_unlocked) {
+        router.push({ pathname: '/reader/[id]', params: { id: book.id, chapterId: chapter.id } });
+      } else {
+        showUnlockPrompt(chapter);
+      }
+      return;
+    }
+
+    // Fallback if not fetched
+    if (chapter.is_free) {
+      router.push({ pathname: '/reader/[id]', params: { id: book.id, chapterId: chapter.id } });
+    } else {
+      showUnlockPrompt(chapter);
+    }
+  };
+
+  const showUnlockPrompt = (chapter: Chapter) => {
+    Alert.alert(
+      'Chapter Locked',
+      `This chapter costs ${chapter.coin_cost} coins to unlock. You have ${user?.coin_balance || 0} coins.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Go Premium', onPress: () => router.push('/subscription') },
+        { text: 'Unlock with Coins', onPress: () => unlockChapter(chapter) }
+      ]
+    );
+  };
+
+  const unlockChapter = async (chapter: Chapter) => {
+    if (!user || !book) return;
+    if ((user.coin_balance || 0) < (chapter.coin_cost || 0)) {
+      Alert.alert('Insufficient Coins', 'You do not have enough coins to unlock this chapter.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Buy Coins', onPress: () => router.push('/wallet') }
+      ]);
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const result = await walletService.unlockContent('chapter', chapter.id, chapter.coin_cost || 0);
+      const newBalance = result?.data?.wallet?.availableCoins ?? (user.coin_balance - (chapter.coin_cost || 0));
+      dispatch(updateCoinBalance(newBalance));
+      // Update local state to show it is unlocked
+      setBook({
+        ...book,
+        chapters: book.chapters.map(ch => ch.id === chapter.id ? { ...ch, is_unlocked: true } : ch)
+      });
+      router.push({ pathname: '/reader/[id]', params: { id: book.id, chapterId: chapter.id } });
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Failed to unlock chapter');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -108,7 +171,13 @@ export default function BookDetailScreen() {
     detailValue: { ...typography.body, color: colors.text },
     chapterItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
     chapterOrder: { ...typography.body, color: colors.primary, fontWeight: 'bold' as const, width: 40 },
+    chapterTitleContainer: { flex: 1, flexDirection: 'row', alignItems: 'center' },
     chapterTitle: { ...typography.body, color: colors.text, flex: 1 },
+    chapterMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    chapterCost: { ...typography.caption, color: colors.accent, fontWeight: 'bold' as const },
+    unlockedIcon: { marginRight: spacing.sm },
+    unlockButton: { backgroundColor: colors.primary, paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: 6 },
+    unlockButtonText: { ...typography.caption, color: '#fff', fontWeight: 'bold' as const },
     errorContainer: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
     errorText: { ...typography.h3, color: colors.textSecondary },
   }), [colors]);
@@ -186,12 +255,34 @@ export default function BookDetailScreen() {
               <TouchableOpacity
                 key={chapter.id}
                 style={styles.chapterItem}
-                onPress={() => router.push({ pathname: '/reader/[id]', params: { id: book.id, chapterId: chapter.id } })}
+                onPress={() => handleChapterPress(chapter)}
                 activeOpacity={0.7}
+                disabled={isProcessing}
               >
                 <Text style={styles.chapterOrder}>{chapter.order}</Text>
-                <Text style={styles.chapterTitle}>{chapter.title}</Text>
-                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                <View style={styles.chapterTitleContainer}>
+                  <Text style={styles.chapterTitle} numberOfLines={1}>{chapter.title}</Text>
+                </View>
+                <View style={styles.chapterMeta}>
+                  {chapter.is_unlocked === true || chapter.is_free ? (
+                    <Ionicons name="lock-open" size={16} color={colors.success} style={styles.unlockedIcon} />
+                  ) : (
+                    <>
+                      {chapter.coin_cost ? (
+                        <TouchableOpacity
+                          style={styles.unlockButton}
+                          onPress={(e) => { e.stopPropagation?.(); unlockChapter(chapter); }}
+                          disabled={isProcessing}
+                        >
+                          <Text style={styles.unlockButtonText}>{chapter.coin_cost} 🪙 Unlock</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <Ionicons name="lock-closed" size={16} color={colors.textSecondary} />
+                      )}
+                    </>
+                  )}
+                  <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                </View>
               </TouchableOpacity>
             ))}
           </View>

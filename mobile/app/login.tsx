@@ -39,7 +39,7 @@ export default function LoginScreen() {
       
       router.push({
         pathname: '/verify-otp',
-        params: { mobileNumber, countryCode },
+        params: { mobileNumber, countryCode, otp: response.otp || '' },
       });
     } catch (error: any) {
       console.error('Send OTP error:', error);

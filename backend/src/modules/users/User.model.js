@@ -29,6 +29,8 @@ const userSchema = new mongoose.Schema(
       notifications: { type: Boolean, default: true },
     },
     lastActive: { type: Date, default: Date.now },
+    isPremium: { type: Boolean, default: false },
+    premiumExpiresAt: { type: Date, default: null },
   },
   {
     timestamps: true,

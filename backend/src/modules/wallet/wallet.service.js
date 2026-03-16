@@ -73,8 +73,10 @@ const unlockContent = async (userId, contentType, contentId, coinCost) => {
  * Get wallet balance
  */
 const getWallet = async (userId) => {
-  const wallet = await Wallet.findOne({ userId });
-  if (!wallet) throw AppError.notFound('Wallet not found');
+  let wallet = await Wallet.findOne({ userId });
+  if (!wallet) {
+    wallet = await Wallet.create({ userId, availableCoins: 0, totalCoins: 0, usedCoins: 0 });
+  }
   return wallet;
 };
 
@@ -135,9 +137,11 @@ const adminAdjustWallet = async (userId, { type, coins, notes, adminId }) => {
  * Add coins to user wallet (after payment verification)
  * For MVP: directly credits coins. In production, verify payment before calling this.
  */
-const addCoins = async (userId, { coins, source = 'purchase', notes = '' }) => {
-  const wallet = await Wallet.findOne({ userId });
-  if (!wallet) throw AppError.notFound('Wallet not found');
+const addCoins = async (userId, { coins, source = 'coin_pack', notes = '' }) => {
+  let wallet = await Wallet.findOne({ userId });
+  if (!wallet) {
+    wallet = await Wallet.create({ userId, availableCoins: 0, totalCoins: 0, usedCoins: 0 });
+  }
 
   if (!coins || coins <= 0) {
     throw AppError.badRequest('Invalid coin amount');

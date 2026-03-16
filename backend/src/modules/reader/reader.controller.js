@@ -706,6 +706,61 @@ const saveProgress = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * GET /api/v1/reader/books/:bookId/chapter-status
+ * Returns chapters of a book annotated with per-user unlock status.
+ * Requires authentication. Uses subscription + coin-unlock checks.
+ */
+const getChapterUnlockStatus = asyncHandler(async (req, res) => {
+  const { bookId } = req.params;
+  const userDoc = req.user; // always set because route uses authenticate
+
+  const chapters = await Chapter.find({ bookId, status: 'published' })
+    .sort({ orderNumber: 1 })
+    .lean();
+
+  const UnlockTransaction = require('../wallet/UnlockTransaction.model');
+
+  // Check if user has an active premium plan
+  const hasActivePlan =
+    userDoc.isPremium === true &&
+    (!userDoc.premiumExpiresAt || new Date(userDoc.premiumExpiresAt) > new Date());
+
+  // Fetch all coin-unlock records for this user's chapters in one query
+  const chapterIds = chapters.map((c) => c._id);
+  const unlocks = await UnlockTransaction.find({
+    userId: userDoc._id,
+    contentType: 'chapter',
+    contentId: { $in: chapterIds },
+  }).lean();
+  const unlockedSet = new Set(unlocks.map((u) => u.contentId.toString()));
+
+  const result = chapters.map((ch) => {
+    const isFree = ch.isFree === true;
+    const isCoinUnlocked = unlockedSet.has(ch._id.toString());
+    const isUnlocked = isFree || hasActivePlan || isCoinUnlocked;
+
+    return {
+      id: ch._id.toString(),
+      title: ch.title,
+      order: ch.orderNumber,
+      is_free: isFree,
+      coin_cost: ch.coinCost || 0,
+      estimated_read_time: ch.estimatedReadTime || 0,
+      is_unlocked: isUnlocked,
+      access_reason: isFree
+        ? 'free'
+        : hasActivePlan
+        ? 'subscription'
+        : isCoinUnlocked
+        ? 'coins'
+        : 'locked',
+    };
+  });
+
+  res.json({ success: true, data: result, has_active_plan: hasActivePlan });
+});
+
 module.exports = {
   getProfile,
   updateProfile,
@@ -725,4 +780,5 @@ module.exports = {
   getProgress,
   getProgressByContent,
   saveProgress,
+  getChapterUnlockStatus,
 };

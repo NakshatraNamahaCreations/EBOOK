@@ -4,9 +4,12 @@ import { useRouter } from 'expo-router';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { authService } from '../src/services/auth.service';
+import { useAppDispatch } from '../src/hooks/useAppDispatch';
+import { resetStore } from '../src/store/store';
 
 export default function SplashScreen() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
     checkAuth();
@@ -14,14 +17,13 @@ export default function SplashScreen() {
 
   const checkAuth = async () => {
     try {
-      const token = await authService.getStoredToken();
-      
+      const valid = await authService.isSessionValid();
+      if (!valid) {
+        await authService.logout(); // clear storage
+        dispatch(resetStore());     // clear Redux
+      }
       setTimeout(() => {
-        if (token) {
-          router.replace('/(tabs)/home');
-        } else {
-          router.replace('/onboarding');
-        }
+        router.replace(valid ? '/(tabs)/home' : '/onboarding');
       }, 2000);
     } catch (error) {
       setTimeout(() => {

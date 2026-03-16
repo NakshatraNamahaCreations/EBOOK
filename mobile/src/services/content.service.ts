@@ -98,4 +98,9 @@ export const contentService = {
     });
     return response.data;
   },
+
+  async getChapterStatus(bookId: string) {
+    const response = await api.get(`/reader/books/${bookId}/chapter-status`);
+    return response.data;
+  },
 };

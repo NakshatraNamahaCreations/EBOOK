@@ -46,6 +46,28 @@ api.interceptors.response.use(
       data: error.response?.data,
       message: error.message,
     });
+
+    if (error.response?.status === 401) {
+      console.log('401 Unauthorized detected. Clearing session.');
+      
+      // Clear storage
+      storage.removeItem('auth_token').then(() => {
+        storage.removeItem('user_id').then(() => {
+          storage.removeItem('login_time').then(() => {
+            // Import store dynamically to avoid circular dependency
+            try {
+              const { store, resetStore } = require('../store/store');
+              store.dispatch(resetStore());
+              
+              const { router } = require('expo-router');
+              router.replace('/splash');
+            } catch (e) {
+              console.log('Error during 401 logout:', e);
+            }
+          });
+        });
+      });
+    }
     return Promise.reject(error);
   }
 );

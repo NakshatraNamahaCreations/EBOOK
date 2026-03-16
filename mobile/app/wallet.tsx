@@ -199,19 +199,27 @@ export default function WalletScreen({ navigation }: any) {
   };
 
   const handleBuyCoins = async (pack: CoinPack) => {
-    if (!user?.id) {
-      Alert.alert('Error', 'User not found.');
-      return;
-    }
-
+    console.log('Purchase button clicked for pack:', pack.id);
     try {
       setBuyingPackId(pack.id);
-      const result = await walletService.addCoins(user.id, pack.total_coins);
-      dispatch(updateCoinBalance(result.new_balance));
+      const userIdStr = user?.id || (user as any)?._id || 'unknown';
+      console.log('User ID resolved to:', userIdStr, 'adding coins:', pack.total_coins);
+      
+      const result = await walletService.addCoins(userIdStr, pack.total_coins);
+      console.log('Backend response after adding coins:', result);
+      
+      const updatedBalance = result?.wallet?.availableCoins ?? ((user?.coin_balance || 0) + pack.total_coins);
+      console.log('New coin balance calculated:', updatedBalance);
+      
+      dispatch(updateCoinBalance(updatedBalance));
+      console.log('Dispatched updateCoinBalance.');
+      
       Alert.alert('Success', `${pack.total_coins} coins added to your wallet.`);
       await loadTransactions();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to purchase coins. Please try again.');
+      console.log('Transactions reloaded successfully.');
+    } catch (error: any) {
+      console.error('Wallet Purchase Error:', error);
+      Alert.alert('Error', error?.response?.data?.message || error?.message || 'Failed to purchase coins. Please try again.');
     } finally {
       setBuyingPackId(null);
     }
@@ -282,36 +290,7 @@ export default function WalletScreen({ navigation }: any) {
             </View>
           </LinearGradient>
 
-          <View style={styles.actionsRow}>
-            <TouchableOpacity style={styles.actionItem}>
-              <View style={styles.actionCircle}>
-                <Ionicons
-                  name="arrow-down-outline"
-                  size={22}
-                  color="#60A5FA"
-                />
-              </View>
-              <Text style={styles.actionText}>Receive</Text>
-            </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionItem}>
-              <View style={styles.actionCircle}>
-                <Ionicons name="arrow-up-outline" size={22} color="#F87171" />
-              </View>
-              <Text style={styles.actionText}>Send</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionItem}>
-              <View style={styles.actionCircle}>
-                <Ionicons
-                  name="swap-horizontal-outline"
-                  size={22}
-                  color="#A78BFA"
-                />
-              </View>
-              <Text style={styles.actionText}>Swap</Text>
-            </TouchableOpacity>
-          </View>
 
           <View style={styles.sectionWrap}>
             <View style={styles.sectionHeader}>
@@ -333,12 +312,9 @@ export default function WalletScreen({ navigation }: any) {
                   const isBuying = buyingPackId === pack.id;
 
                   return (
-                    <TouchableOpacity
+                    <View
                       key={pack.id}
-                      activeOpacity={0.9}
                       style={styles.packCard}
-                      onPress={() => handleBuyCoins(pack)}
-                      disabled={!!buyingPackId}
                     >
                       {pack.offer_label ? (
                         <View style={styles.packOfferWrap}>
@@ -376,19 +352,26 @@ export default function WalletScreen({ navigation }: any) {
                         ₹{pack.price_inr.toLocaleString()}
                       </Text>
 
-                      <LinearGradient
-                        colors={['#6AA8FF', '#3B82F6']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.purchaseButton}
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => handleBuyCoins(pack)}
+                        disabled={!!buyingPackId}
+                        style={{ marginTop: 'auto' }}
                       >
-                        {isBuying ? (
-                          <ActivityIndicator size="small" color="#FFFFFF" />
-                        ) : (
-                          <Text style={styles.purchaseButtonText}>Purchase</Text>
-                        )}
-                      </LinearGradient>
-                    </TouchableOpacity>
+                        <LinearGradient
+                          colors={['#6AA8FF', '#3B82F6']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={[styles.purchaseButton, { marginTop: 0 }]}
+                        >
+                          {isBuying ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                          ) : (
+                            <Text style={styles.purchaseButtonText}>Purchase</Text>
+                          )}
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    </View>
                   );
                 })}
               </ScrollView>
@@ -656,29 +639,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
-  actionsRow: {
-    marginTop: 26,
-    marginHorizontal: 34,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  actionItem: {
-    alignItems: 'center',
-  },
-  actionCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#1D2840',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  actionText: {
-    color: '#A6B1C2',
-    fontSize: 13,
-    fontWeight: '500',
-  },
+
 
   sectionWrap: {
     marginTop: 34,

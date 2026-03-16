@@ -61,51 +61,16 @@ const getChapterById = async (chapterId, includeContent = true) => {
 
 /**
  * Get chapter content (for reading) — checks ownership / unlock status
+ * @param {string} chapterId
+ * @param {object|null} userDoc  Full Mongoose user document (or null for anonymous)
  */
-const getChapterContent = async (chapterId, userId = null) => {
+const getChapterContent = async (chapterId, userDoc = null) => {
   const chapter = await Chapter.findById(chapterId);
   if (!chapter) throw AppError.notFound('Chapter not found');
   if (chapter.status !== 'published') throw AppError.notFound('Chapter not available');
 
-  // If chapter is free, return content directly
-  if (chapter.isFree) {
-    // Increment read count
-    await Chapter.findByIdAndUpdate(chapterId, { $inc: { readCount: 1 } });
-    return { chapter, isUnlocked: true };
-  }
-
-  // If premium, check if user has unlocked it
-  if (!userId) {
-    return {
-      chapter: {
-        _id: chapter._id,
-        title: chapter.title,
-        orderNumber: chapter.orderNumber,
-        isFree: chapter.isFree,
-        coinCost: chapter.coinCost,
-        contentPreview: chapter.contentPreview,
-        wordCount: chapter.wordCount,
-        estimatedReadTime: chapter.estimatedReadTime,
-      },
-      isUnlocked: false,
-    };
-  }
-
-  // Check unlock_transactions for this user+chapter
-  const UnlockTransaction = require('../wallet/UnlockTransaction.model');
-  const unlock = await UnlockTransaction.findOne({
-    userId,
-    contentType: 'chapter',
-    contentId: chapterId,
-  });
-
-  if (unlock) {
-    await Chapter.findByIdAndUpdate(chapterId, { $inc: { readCount: 1 } });
-    return { chapter, isUnlocked: true };
-  }
-
-  // Not unlocked — return preview only
-  return {
+  // Helper: build locked preview response
+  const lockedResponse = () => ({
     chapter: {
       _id: chapter._id,
       title: chapter.title,
@@ -117,7 +82,42 @@ const getChapterContent = async (chapterId, userId = null) => {
       estimatedReadTime: chapter.estimatedReadTime,
     },
     isUnlocked: false,
-  };
+  });
+
+  // ── 1. Free chapter — everyone can read ────────────────────
+  if (chapter.isFree) {
+    await Chapter.findByIdAndUpdate(chapterId, { $inc: { readCount: 1 } });
+    return { chapter, isUnlocked: true, accessReason: 'free' };
+  }
+
+  // ── 2. No user (anonymous) — locked ────────────────────────
+  if (!userDoc) return lockedResponse();
+
+  // ── 3. Active premium subscription — full access ───────────
+  const hasActivePlan =
+    userDoc.isPremium === true &&
+    (!userDoc.premiumExpiresAt || new Date(userDoc.premiumExpiresAt) > new Date());
+
+  if (hasActivePlan) {
+    await Chapter.findByIdAndUpdate(chapterId, { $inc: { readCount: 1 } });
+    return { chapter, isUnlocked: true, accessReason: 'subscription' };
+  }
+
+  // ── 4. Coin-unlock transaction exists ─────────────────────
+  const UnlockTransaction = require('../wallet/UnlockTransaction.model');
+  const unlock = await UnlockTransaction.findOne({
+    userId: userDoc._id,
+    contentType: 'chapter',
+    contentId: chapterId,
+  });
+
+  if (unlock) {
+    await Chapter.findByIdAndUpdate(chapterId, { $inc: { readCount: 1 } });
+    return { chapter, isUnlocked: true, accessReason: 'coins' };
+  }
+
+  // ── 5. Not accessible — return preview only ────────────────
+  return lockedResponse();
 };
 
 /**
