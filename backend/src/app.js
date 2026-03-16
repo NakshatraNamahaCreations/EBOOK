@@ -41,20 +41,22 @@ app.use(helmet({
   crossOriginResourcePolicy: false,
 }));
 app.use(mongoSanitize());
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (native mobile apps, curl, Postman)
-    if (!origin) return callback(null, true);
-    // Allow configured origins (admin panel, etc.)
-    if (config.cors.origins.includes(origin)) return callback(null, true);
-    // In development, allow all origins
-    if (config.env === 'development') return callback(null, true);
-    callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+// app.use(cors({
+//   origin: (origin, callback) => {
+//     // Allow requests with no origin (native mobile apps, curl, Postman)
+//     if (!origin) return callback(null, true);
+//     // Allow configured origins (admin panel, etc.)
+//     if (config.cors.origins.includes(origin)) return callback(null, true);
+//     // In development, allow all origins
+//     if (config.env === 'development') return callback(null, true);
+//     callback(new Error('Not allowed by CORS'));
+//   },
+//   credentials: true,
+//   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+//   allowedHeaders: ['Content-Type', 'Authorization'],
+// }));
+
+app.use(cors());
 
 // ─── Rate Limiting ───────────────────────────────────────────
 const limiter = rateLimit({
