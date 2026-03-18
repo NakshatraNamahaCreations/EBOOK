@@ -3,13 +3,29 @@ import { storage } from '../utils/storage';
 import { AuthResponse } from '../types';
 
 export const authService = {
+  async login(identifier: string, password: string): Promise<AuthResponse> {
+    const response = await api.post('/auth/login', { identifier, password });
+    const data = response.data as AuthResponse;
+    await storage.setItem('auth_token', data.access_token);
+    await storage.setItem('user_id', data.user.id);
+    await storage.setItem('login_time', Date.now().toString());
+    return data;
+  },
+
+  async register(name: string, phone: string, email: string, password: string, referralCode?: string): Promise<AuthResponse> {
+    const response = await api.post('/auth/register', { name, phone, email, password, ...(referralCode ? { referralCode: referralCode.toUpperCase() } : {}) });
+    const data = response.data as AuthResponse;
+    await storage.setItem('auth_token', data.access_token);
+    await storage.setItem('user_id', data.user.id);
+    await storage.setItem('login_time', Date.now().toString());
+    return data;
+  },
+
   async sendOTP(mobileNumber: string, countryCode: string = '+91') {
-    console.log('authService.sendOTP called with:', { mobileNumber, countryCode });
     const response = await api.post('/auth/send-otp', {
       mobile_number: mobileNumber,
       country_code: countryCode,
     });
-    console.log('authService.sendOTP response:', response.data);
     return response.data;
   },
 
@@ -19,23 +35,20 @@ export const authService = {
       country_code: countryCode,
       otp,
     });
-
-    // After interceptor, response.data = { access_token, refresh_token, is_new_user, user }
     const data = response.data as AuthResponse;
-
     await storage.setItem('auth_token', data.access_token);
     await storage.setItem('user_id', data.user.id);
     await storage.setItem('login_time', Date.now().toString());
-
     return data;
   },
 
-  async resendOTP(mobileNumber: string, countryCode: string = '+91') {
-    const response = await api.post('/auth/resend-otp', {
-      mobile_number: mobileNumber,
-      country_code: countryCode,
-    });
-    return response.data;
+  async fetchCurrentUser() {
+    const response = await api.get('/reader/profile');
+    return response.data as import('../types').User;
+  },
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await api.post('/auth/change-password', { currentPassword, newPassword });
   },
 
   async logout() {
@@ -50,11 +63,7 @@ export const authService = {
 
   async isSessionValid() {
     const token = await storage.getItem('auth_token');
-    if (!token) return false;
-    const loginTime = await storage.getItem('login_time');
-    if (!loginTime) return false;
-    const ONE_DAY = 24 * 60 * 60 * 1000;
-    return Date.now() - parseInt(loginTime) < ONE_DAY;
+    return !!token;
   },
 
   async getStoredUserId() {

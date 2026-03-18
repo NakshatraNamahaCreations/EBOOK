@@ -1,38 +1,38 @@
 export const typography = {
   h1: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: '700' as const,
-    lineHeight: 40,
-    fontFamily: 'Inter_700Bold',
+    lineHeight: 34,
+    fontFamily: 'Poppins_700Bold',
   },
   h2: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700' as const,
-    lineHeight: 32,
-    fontFamily: 'Inter_700Bold',
+    lineHeight: 28,
+    fontFamily: 'Poppins_700Bold',
   },
   h3: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '600' as const,
-    lineHeight: 28,
-    fontFamily: 'Inter_600SemiBold',
+    lineHeight: 24,
+    fontFamily: 'Poppins_600SemiBold',
   },
   body: {
-    fontSize: 16,
-    fontWeight: '400' as const,
-    lineHeight: 24,
-    fontFamily: 'Inter_400Regular',
-  },
-  bodySmall: {
     fontSize: 14,
     fontWeight: '400' as const,
-    lineHeight: 20,
-    fontFamily: 'Inter_400Regular',
+    lineHeight: 22,
+    fontFamily: 'Poppins_400Regular',
   },
-  caption: {
+  bodySmall: {
     fontSize: 12,
     fontWeight: '400' as const,
-    lineHeight: 16,
-    fontFamily: 'Inter_400Regular',
+    lineHeight: 18,
+    fontFamily: 'Poppins_400Regular',
+  },
+  caption: {
+    fontSize: 11,
+    fontWeight: '400' as const,
+    lineHeight: 15,
+    fontFamily: 'Poppins_400Regular',
   },
 };

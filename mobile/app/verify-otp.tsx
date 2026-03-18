@@ -118,7 +118,7 @@ export default function VerifyOTPScreen() {
             </Text>
             {params.otp ? (
               <View style={styles.otpDebugBox}>
-                <Text style={styles.otpDebugLabel}>🧪 Test OTP</Text>
+           
                 <Text style={styles.otpDebugValue}>{params.otp}</Text>
               </View>
             ) : null}
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   otpDebugValue: {
-    ...typography.h2,
+    ...typography.bodySmall,
     color: '#4caf50',
     letterSpacing: 6,
     fontWeight: 'bold',

@@ -243,34 +243,37 @@ export const PaymentsPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-end p-4 rounded-xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
-        <Select label="Status" value={filters.status} onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
-          options={[
-            { value: '', label: 'All Status' },
-            { value: 'captured', label: 'Captured' },
-            { value: 'created', label: 'Created' },
-            { value: 'authorized', label: 'Authorized' },
-            { value: 'failed', label: 'Failed' },
-            { value: 'refunded', label: 'Refunded' },
-          ]} className="!w-36" />
-        <Select label="Gateway" value={filters.gateway} onChange={e => setFilters(f => ({ ...f, gateway: e.target.value }))}
-          options={[{ value: '', label: 'All Gateways' }, { value: 'razorpay', label: 'Razorpay' }, { value: 'stripe', label: 'Stripe' }]}
-          className="!w-36" />
-        <Input label="From Date" type="date" value={filters.startDate}
-          onChange={e => setFilters(f => ({ ...f, startDate: e.target.value }))} className="!w-40" />
-        <Input label="To Date" type="date" value={filters.endDate}
-          onChange={e => setFilters(f => ({ ...f, endDate: e.target.value }))} className="!w-40" />
+      <div className="rounded-xl p-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <Select label="Status" value={filters.status} onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
+            options={[
+              { value: '', label: 'All Status' },
+              { value: 'captured', label: 'Captured' },
+              { value: 'created', label: 'Created' },
+              { value: 'authorized', label: 'Authorized' },
+              { value: 'failed', label: 'Failed' },
+              { value: 'refunded', label: 'Refunded' },
+            ]} />
+          <Select label="Gateway" value={filters.gateway} onChange={e => setFilters(f => ({ ...f, gateway: e.target.value }))}
+            options={[{ value: '', label: 'All Gateways' }, { value: 'razorpay', label: 'Razorpay' }, { value: 'stripe', label: 'Stripe' }]} />
+          <Input label="From Date" type="date" value={filters.startDate}
+            onChange={e => setFilters(f => ({ ...f, startDate: e.target.value }))} />
+          <Input label="To Date" type="date" value={filters.endDate}
+            onChange={e => setFilters(f => ({ ...f, endDate: e.target.value }))} />
+        </div>
         {(filters.status || filters.gateway || filters.startDate || filters.endDate) && (
-          <Button variant="secondary" icon={X} size="sm"
-            onClick={() => setFilters({ status: '', gateway: '', startDate: '', endDate: '' })}>
-            Clear
-          </Button>
+          <div className="mt-3 flex justify-end">
+            <Button variant="secondary" icon={X} size="sm"
+              onClick={() => setFilters({ status: '', gateway: '', startDate: '', endDate: '' })}>
+              Clear Filters
+            </Button>
+          </div>
         )}
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--bg-secondary)', width: 'fit-content', border: '1px solid var(--border-subtle)' }}>
-        {[{ key: 'payments', label: 'Gateway Payments' }, { key: 'purchases', label: 'Coin Purchases' }].map(tab => (
+        {[{ key: 'payments', label: 'Gateway Payments' }, { key: 'purchases', label: 'Book Purchases' }].map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all"
             style={{

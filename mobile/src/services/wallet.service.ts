@@ -17,7 +17,7 @@ export const walletService = {
   async getTransactions(_userId: string, page = 1, limit = 20) {
     const response = await api.get('/reader/wallet/transactions', { params: { page, limit } });
     const result = response.data as any;
-    const transactions = (result?.transactions || result || []) as CoinTransaction[];
+    const transactions = Array.isArray(result?.transactions) ? result.transactions : [];
     const pagination = result?.pagination || null;
     return { transactions, pagination };
   },

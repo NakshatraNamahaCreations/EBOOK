@@ -21,18 +21,18 @@ export default function AboutScreen() {
   const { colors } = useTheme();
 
   const openWebsite = () =>
-    Linking.openURL('https://bookvault.app').catch(() =>
+    Linking.openURL('https://saliljaveri.app').catch(() =>
       Alert.alert('Error', 'Unable to open website.')
     );
 
   const rateApp = () =>
-    Alert.alert('Rate Us', 'Redirecting to the app store to rate BookVault.', [
+    Alert.alert('Rate Us', 'Redirecting to the app store to rate Salil javeri.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Rate Now', onPress: () => {} },
     ]);
 
   const shareApp = () =>
-    Alert.alert('Share', 'Share BookVault with your friends!');
+    Alert.alert('Share', 'Share Salil javeri with your friends!');
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -76,7 +76,7 @@ export default function AboutScreen() {
           <View style={styles.logoWrap}>
             <BookOpen size={44} color={colors.primary} strokeWidth={1.5} />
           </View>
-          <Text style={styles.appName}>BookVault</Text>
+          <Text style={styles.appName}>Salil javeri</Text>
           <Text style={styles.tagline}>Read · Listen · Grow</Text>
           <View style={styles.versionBadge}>
             <Text style={styles.versionText}>v{APP_VERSION} · Build {BUILD_NUMBER}</Text>
@@ -102,7 +102,7 @@ export default function AboutScreen() {
             <View style={[styles.actionIcon, { backgroundColor: '#3a2e0a' }]}>
               <Star size={18} color="#FFE66D" strokeWidth={2} />
             </View>
-            <Text style={styles.actionText}>Rate BookVault</Text>
+            <Text style={styles.actionText}>Rate Salil javeri</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.actionRow, styles.infoRowBorder]} onPress={shareApp}>
@@ -121,7 +121,7 @@ export default function AboutScreen() {
         </View>
 
         <Text style={styles.copyright}>
-          © 2025 BookVault. All rights reserved.{'\n'}Made with ❤️ in India.
+          © 2025 Salil javeri. All rights reserved.{'\n'}Made with ❤️ in India.
         </Text>
       </ScrollView>
     </SafeAreaView>

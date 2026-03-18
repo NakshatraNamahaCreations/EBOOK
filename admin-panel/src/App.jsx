@@ -13,26 +13,15 @@ import { DashboardPage } from './features/dashboard/DashboardPage';
 import { UsersPage } from './features/users/UsersPage';
 import { AuthorsPage } from './features/authors/AuthorsPage';
 import { BooksPage } from './features/books/BooksPage';
-import { AudiobooksPage } from './features/audiobooks/AudiobooksPage';
 import { PodcastsPage } from './features/podcasts/PodcastsPage';
-import { VideosPage } from './features/videos/VideosPage';
-import { WalletPage } from './features/wallet/WalletPage';
 import { PaymentsPage } from './features/payments/PaymentsPage';
 import { BannersPage } from './features/banners/BannersPage';
-import { NotificationsPage } from './features/notifications/NotificationsPage';
 import { ReviewsPage } from './features/reviews/ReviewsPage';
 import { CategoriesPage } from './features/categories/CategoriesPage';
 import { SettingsPage } from './features/settings/SettingsPage';
-
-const PlaceholderView = ({ title }) => (
-  <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-    <div className="empty-state">
-      <div className="empty-state-icon"><span className="text-2xl">✨</span></div>
-      <h3>{title}</h3>
-      <p>This module will be built in the next phase.</p>
-    </div>
-  </div>
-);
+import { ReadersPage } from './features/readers/ReadersPage';
+import { CouponsPage } from './features/coupons/CouponsPage';
+import { ReferralsPage } from './features/referrals/ReferralsPage';
 
 export const App = () => {
   return (
@@ -53,18 +42,16 @@ export const App = () => {
           <Route element={<AdminLayout />}>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/readers" element={<ReadersPage />} />
             <Route path="/users" element={<UsersPage />} />
             <Route path="/authors" element={<AuthorsPage />} />
             <Route path="/books" element={<BooksPage />} />
-            <Route path="/audiobooks" element={<AudiobooksPage />} />
             <Route path="/podcasts" element={<PodcastsPage />} />
-            <Route path="/videos" element={<VideosPage />} />
-            <Route path="/wallet" element={<WalletPage />} />
             <Route path="/payments" element={<PaymentsPage />} />
+            <Route path="/coupons" element={<CouponsPage />} />
+            <Route path="/referrals" element={<ReferralsPage />} />
             <Route path="/banners" element={<BannersPage />} />
-            <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/reviews" element={<ReviewsPage />} />
-            <Route path="/releases" element={<PlaceholderView title="Release Planner" />} />
             <Route path="/categories" element={<CategoriesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>

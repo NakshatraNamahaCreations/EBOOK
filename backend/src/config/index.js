@@ -6,14 +6,16 @@ module.exports = {
   port: parseInt(process.env.PORT, 10) || 5000,
 
   mongodb: {
-    uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/bookvault',
+    uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/saliljaveri',
   },
 
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET,
     refreshSecret: process.env.JWT_REFRESH_SECRET,
-    accessExpiry: process.env.JWT_ACCESS_EXPIRY || '15m',
-    refreshExpiry: process.env.JWT_REFRESH_EXPIRY || '7d',
+    accessExpiry: process.env.JWT_ACCESS_EXPIRY || '30d',
+    readerExpiry: process.env.JWT_READER_EXPIRY || '30d',
+    adminExpiry: process.env.JWT_ADMIN_EXPIRY || '8h',
+    refreshExpiry: process.env.JWT_REFRESH_EXPIRY || '90d',
   },
 
   redis: {
@@ -26,7 +28,7 @@ module.exports = {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
     region: process.env.AWS_REGION || 'ap-south-1',
-    s3Bucket: process.env.AWS_S3_BUCKET || 'bookvault-media',
+    s3Bucket: process.env.AWS_S3_BUCKET || 'saliljaveri-media',
     signedUrlExpiry: parseInt(process.env.AWS_S3_SIGNED_URL_EXPIRY, 10) || 900,
   },
 

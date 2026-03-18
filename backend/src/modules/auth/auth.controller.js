@@ -15,8 +15,9 @@ const register = asyncHandler(async (req, res) => {
  */
 const login = asyncHandler(async (req, res) => {
   const result = await authService.login({
-    ...req.body,
-    expectedRole: null, // any role can login
+    identifier: req.body.identifier || req.body.email,
+    password: req.body.password,
+    expectedRole: null,
   });
   success(res, result, 'Login successful');
 });

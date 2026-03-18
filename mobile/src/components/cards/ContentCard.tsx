@@ -17,14 +17,15 @@ interface ContentCardProps {
 export const ContentCard: React.FC<ContentCardProps> = ({ content, onPress }) => {
   const { colors } = useTheme();
 
+  // Only show badge for paid content — free is assumed
   const getAccessBadge = () => {
     switch (content.access_type) {
-      case 'free':
-        return { text: 'FREE', gradient: ['#4ECDC4', '#45B8B0'] };
+      case 'paid':
+        return { text: `₹${content.price_inr ?? 0}`, gradient: ['#F59E0B', '#D97706'] as [string, string] };
       case 'premium':
-        return { text: 'PREMIUM', gradient: ['#FFE66D', '#F7C948'] };
+        return { text: 'PREMIUM', gradient: ['#FFE66D', '#F7C948'] as [string, string] };
       case 'coins':
-        return { text: `${content.coin_price}`, icon: 'diamond', gradient: ['#FF6B6B', '#EE5A52'] };
+        return { text: `₹${content.price_inr ?? 0}`, gradient: ['#F59E0B', '#D97706'] as [string, string] };
       default:
         return null;
     }
@@ -48,19 +49,6 @@ export const ContentCard: React.FC<ContentCardProps> = ({ content, onPress }) =>
     },
     image: { width: '100%', height: '100%' },
     gradient: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '50%' },
-    ratingBadge: {
-      position: 'absolute',
-      top: spacing.sm,
-      left: spacing.sm,
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 4,
-      borderRadius: 12,
-      gap: 4,
-    },
-    ratingText: { color: '#fff', fontSize: 11, fontWeight: '600' as const },
     accessBadge: {
       position: 'absolute',
       top: spacing.sm,
@@ -75,7 +63,16 @@ export const ContentCard: React.FC<ContentCardProps> = ({ content, onPress }) =>
     badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' as const },
     bottomInfo: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: spacing.md },
     title: { ...typography.bodySmall, color: '#fff', fontWeight: '700' as const, marginBottom: 4 },
-    author: { ...typography.caption, color: 'rgba(255,255,255,0.8)' },
+    author: { ...typography.caption, color: 'rgba(255,255,255,0.8)', marginBottom: 4 },
+    languagePill: {
+      alignSelf: 'flex-start',
+      backgroundColor: 'rgba(255,255,255,0.18)',
+      borderRadius: 8,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      marginTop: 2,
+    },
+    languagePillText: { color: 'rgba(255,255,255,0.85)', fontSize: 9, fontWeight: '600' as const },
   }), [colors]);
 
   return (
@@ -87,10 +84,6 @@ export const ContentCard: React.FC<ContentCardProps> = ({ content, onPress }) =>
           defaultSource={require('../../../assets/images/icon.png')}
         />
         <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={styles.gradient} />
-        <View style={styles.ratingBadge}>
-          <Ionicons name="star" size={12} color={colors.accent} />
-          <Text style={styles.ratingText}>{(content.rating ?? 0).toFixed(1)}</Text>
-        </View>
         {badge && (
           <LinearGradient
             colors={badge.gradient}
@@ -105,6 +98,11 @@ export const ContentCard: React.FC<ContentCardProps> = ({ content, onPress }) =>
         <View style={styles.bottomInfo}>
           <Text style={styles.title} numberOfLines={2}>{content.title}</Text>
           <Text style={styles.author} numberOfLines={1}>{content.author_name}</Text>
+          {content.language ? (
+            <View style={styles.languagePill}>
+              <Text style={styles.languagePillText}>{content.language}</Text>
+            </View>
+          ) : null}
         </View>
       </View>
     </TouchableOpacity>

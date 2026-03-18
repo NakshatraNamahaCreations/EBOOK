@@ -11,12 +11,11 @@ const audiobookSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Chapter',
     },
+    orderNumber: { type: Number, default: 1 },
     title: { type: String, required: true, trim: true },
     audioUrl: { type: String, default: '' }, // S3 key
     duration: { type: Number, default: 0 }, // seconds
     narrator: { type: String, default: '' },
-    isFree: { type: Boolean, default: false },
-    coinCost: { type: Number, default: 0, min: 0 },
     listenCount: { type: Number, default: 0 },
     status: {
       type: String,

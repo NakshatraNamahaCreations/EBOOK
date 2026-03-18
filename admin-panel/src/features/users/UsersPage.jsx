@@ -11,8 +11,6 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 const ROLE_META = {
-  reader: { label: 'Reader', variant: 'info', description: 'App consumer only — can read books, listen to podcasts, watch videos.' },
-  author: { label: 'Author', variant: 'warning', description: 'Content creator — can submit books, chapters, and audiobooks.' },
   admin: { label: 'Admin', variant: 'accent', description: 'Full management access to the admin panel.' },
   superadmin: { label: 'Super Admin', variant: 'accent', description: 'Unrestricted platform control.' },
 };
@@ -198,11 +196,7 @@ export const UsersPage = () => {
     }
   };
 
-  const roleColors = { reader: 'info', author: 'warning', admin: 'accent', superadmin: 'accent' };
-
-  // Separate tabs: Admin vs Customer/Reader
-  const [activeTab, setActiveTab] = useState('all');
-  const tabFilter = activeTab === 'admins' ? 'admin' : activeTab === 'readers' ? 'reader' : '';
+  const roleColors = { admin: 'accent', superadmin: 'accent' };
 
   const columns = [
     {
@@ -250,18 +244,11 @@ export const UsersPage = () => {
     },
   ];
 
-  const tabItems = [
-    { key: 'all', label: 'All Users' },
-    { key: 'readers', label: 'Customers / Readers' },
-    { key: 'admins', label: 'Admins' },
-  ];
-
-  // When tab changes, update roleFilter
+  // Only show admin/superadmin users
   useEffect(() => {
-    const newFilter = activeTab === 'admins' ? 'admin' : activeTab === 'readers' ? 'reader' : '';
-    setRoleFilter(newFilter);
+    setRoleFilter('admin');
     setPage(1);
-  }, [activeTab]);
+  }, []);
 
   const UserFormFields = ({ user }) => (
     <>
@@ -271,11 +258,10 @@ export const UsersPage = () => {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <Input label="Phone (optional)" name="phone" defaultValue={user?.phone} placeholder="+91 98765..." />
-        <Select label="Role" name="role" defaultValue={user?.role || 'reader'}
+        <Select label="Role" name="role" defaultValue={user?.role || 'admin'}
           options={[
-            { value: 'reader', label: '👤 Reader / Customer' },
-            { value: 'author', label: '✍️ Author' },
-            { value: 'admin', label: '🛡️ Admin' },
+            { value: 'admin', label: 'Admin' },
+            { value: 'superadmin', label: 'Super Admin' },
           ]} />
       </div>
       <Input label={user ? 'New Password (leave blank to keep)' : 'Password'} name="password" type="password"
@@ -288,28 +274,13 @@ export const UsersPage = () => {
       <div className="space-y-5">
         <div className="page-header">
           <div>
-            <h1 className="flex items-center gap-2.5"><Users className="w-5 h-5" style={{ color: 'var(--accent-400)' }} /> Users</h1>
-            <p>{pagination ? `${pagination.total} total users` : 'Manage platform users'}</p>
+            <h1 className="flex items-center gap-2.5"><Users className="w-5 h-5" style={{ color: 'var(--accent-400)' }} /> Admins</h1>
+            <p>{pagination ? `${pagination.total} admin users` : 'Manage admin & superadmin users'}</p>
           </div>
           <div className="page-actions">
             <SearchInput value={search} onChange={setSearch} placeholder="Search users..." className="w-64" />
             <Button icon={Plus} onClick={() => setShowCreate(true)}>Add User</Button>
           </div>
-        </div>
-
-        {/* Role Tabs */}
-        <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--bg-secondary)', width: 'fit-content', border: '1px solid var(--border-subtle)' }}>
-          {tabItems.map(tab => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all"
-              style={{
-                background: activeTab === tab.key ? 'var(--bg-card)' : 'transparent',
-                color: activeTab === tab.key ? 'var(--accent)' : 'var(--text-muted)',
-                boxShadow: activeTab === tab.key ? 'var(--shadow-sm)' : 'none',
-              }}>
-              {tab.label}
-            </button>
-          ))}
         </div>
 
         <DataTable columns={columns} data={users} isLoading={loading} pagination={pagination} onPageChange={setPage} />

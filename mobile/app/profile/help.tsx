@@ -21,7 +21,7 @@ const FAQS = [
   { q: 'How do I track my reading progress?', a: 'Your progress is saved automatically as you read. Visit the Library tab → In Progress to see all your active reads.' },
   { q: 'Why is my coin balance not updating?', a: 'Pull-to-refresh on the Wallet screen to sync your balance. If the issue persists, please contact support.' },
   { q: 'How do I cancel my subscription?', a: 'Subscriptions are managed through your app store account (Google Play / App Store). Visit your store subscriptions page to cancel.' },
-  { q: 'I forgot my account details. What do I do?', a: 'BookVault uses phone-based OTP login — no password needed. Just enter your registered phone number to receive a new OTP.' },
+  { q: 'I forgot my account details. What do I do?', a: 'Salil javeri uses phone-based OTP login — no password needed. Just enter your registered phone number to receive a new OTP.' },
 ];
 
 function FaqItem({ q, a, colors, styles }: { q: string; a: string; colors: any; styles: any }) {
@@ -45,7 +45,7 @@ export default function HelpScreen() {
   const { colors } = useTheme();
 
   const openEmail = () =>
-    Linking.openURL('mailto:support@bookvault.app').catch(() =>
+    Linking.openURL('mailto:support@saliljaveri.app').catch(() =>
       Alert.alert('Error', 'Unable to open email app.')
     );
 
@@ -92,7 +92,7 @@ export default function HelpScreen() {
             </View>
             <View style={styles.contactText}>
               <Text style={styles.contactTitle}>Email Support</Text>
-              <Text style={styles.contactSub}>support@bookvault.app</Text>
+              <Text style={styles.contactSub}>support@saliljaveri.app</Text>
             </View>
           </TouchableOpacity>
 

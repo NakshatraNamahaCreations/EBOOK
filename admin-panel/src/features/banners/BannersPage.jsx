@@ -37,7 +37,7 @@ export const BannersPage = () => {
   const normalizeBanner = (item) => ({
     ...item,
     _id: item?._id || '',
-    title: item?.title || 'Untitled Banner',
+    title: item?.title || '',
     position: item?.position || 'not_available',
     linkType: item?.linkType || 'not_available',
     priority: item?.priority ?? 0,
@@ -124,8 +124,6 @@ export const BannersPage = () => {
       payload.append('position', formData.get('position') || '');
       payload.append('linkType', formData.get('linkType') || '');
       payload.append('priority', Number(formData.get('priority') || 1));
-      payload.append('startDate', formData.get('startDate') || '');
-      payload.append('endDate', formData.get('endDate') || '');
       payload.append('isActive', 'true');
 
       if (imageFile && imageFile instanceof File && imageFile.size > 0) {
@@ -180,8 +178,6 @@ export const BannersPage = () => {
       payload.append('position', formData.get('position') || '');
       payload.append('linkType', formData.get('linkType') || '');
       payload.append('priority', Number(formData.get('priority') || 1));
-      payload.append('startDate', formData.get('startDate') || '');
-      payload.append('endDate', formData.get('endDate') || '');
       payload.append('isActive', formData.get('isActive') || 'true');
 
       if (imageFile && imageFile instanceof File && imageFile.size > 0) {
@@ -241,8 +237,6 @@ export const BannersPage = () => {
       payload.append('position', banner?.position || '');
       payload.append('linkType', banner?.linkType || '');
       payload.append('priority', banner?.priority ?? 1);
-      payload.append('startDate', banner?.startDate || '');
-      payload.append('endDate', banner?.endDate || '');
       payload.append('isActive', String(!banner?.isActive));
 
       await api.put(`/admin/banners/${banner._id}`, payload);
@@ -314,15 +308,6 @@ export const BannersPage = () => {
       ),
     },
     {
-      header: 'Period',
-      key: 'dates',
-      render: (row) => (
-        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          {row?.startDate || 'N/A'} → {row?.endDate || 'N/A'}
-        </span>
-      ),
-    },
-    {
       header: 'Status',
       key: 'isActive',
       render: (row) => (
@@ -389,7 +374,7 @@ export const BannersPage = () => {
         title="Create Banner"
       >
         <form className="space-y-4" onSubmit={handleCreateBanner}>
-          <Input label="Title" name="title" placeholder="Banner headline" required />
+          <Input label="Title (optional)" name="title" placeholder="Banner headline" />
 
           <Select
             label="Position"
@@ -437,11 +422,6 @@ export const BannersPage = () => {
             ) : null}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Start Date" name="startDate" type="date" />
-            <Input label="End Date" name="endDate" type="date" />
-          </div>
-
           <Input label="Priority" name="priority" type="number" placeholder="1" min="1" />
 
           <div className="flex justify-end gap-3 pt-2">
@@ -476,10 +456,9 @@ export const BannersPage = () => {
       >
         <form className="space-y-4" onSubmit={handleEditBanner}>
           <Input
-            label="Title"
+            label="Title (optional)"
             name="title"
             placeholder="Banner headline"
-            required
             defaultValue={selectedBanner?.title || ''}
           />
 
@@ -529,21 +508,6 @@ export const BannersPage = () => {
                 />
               </div>
             ) : null}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Start Date"
-              name="startDate"
-              type="date"
-              defaultValue={selectedBanner?.startDate || ''}
-            />
-            <Input
-              label="End Date"
-              name="endDate"
-              type="date"
-              defaultValue={selectedBanner?.endDate || ''}
-            />
           </div>
 
           <Input

@@ -56,7 +56,7 @@ export default function ThemeScreen() {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.intro}>
-          Choose how BookVault looks on your device.
+          Choose how Salil javeri looks on your device.
         </Text>
 
         <View style={styles.card}>

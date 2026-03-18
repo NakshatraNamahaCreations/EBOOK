@@ -1,15 +1,12 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { contentService } from '../../services/content.service';
-import { Content, Banner, Category, Progress } from '../../types';
+import { Content, Banner, Progress } from '../../types';
 
 interface ContentState {
   banners: Banner[];
   trendingBooks: Content[];
   trendingAudiobooks: Content[];
   trendingPodcasts: Content[];
-  newReleases: Content[];
-  featured: Content[];
-  categories: Category[];
   library: Content[];
   wishlist: Content[];
   progress: Progress[];
@@ -22,9 +19,6 @@ const initialState: ContentState = {
   trendingBooks: [],
   trendingAudiobooks: [],
   trendingPodcasts: [],
-  newReleases: [],
-  featured: [],
-  categories: [],
   library: [],
   wishlist: [],
   progress: [],
@@ -33,26 +27,24 @@ const initialState: ContentState = {
 };
 
 export const fetchHomeData = createAsyncThunk('content/fetchHomeData', async () => {
-  const [banners, trendingBooks, trendingAudiobooks, trendingPodcasts, newReleases, featured, categories] =
+  const [banners, allBooks, trendingAudiobooks, trendingPodcasts] =
     await Promise.all([
       contentService.getBanners(),
-      contentService.getContent({ content_type: 'book' as any, is_trending: true }),
+      contentService.getContent({ content_type: 'book' as any, limit: 20 }),
       contentService.getContent({ content_type: 'audiobook' as any, limit: 10 }),
       contentService.getContent({ content_type: 'podcast' as any, limit: 10 }),
-      contentService.getContent({ is_new_release: true }),
-      contentService.getContent({ is_featured: true }),
-      contentService.getCategories(),
     ]);
 
-  return {
-    banners,
-    trendingBooks,
-    trendingAudiobooks,
-    trendingPodcasts,
-    newReleases,
-    featured,
-    categories,
-  };
+  // Filter by book_content_type to cleanly separate ebooks from audiobooks
+  const trendingBooks = allBooks.filter(
+    (b: any) => !b.book_content_type || b.book_content_type === 'ebook'
+  ).slice(0, 10);
+
+  const trendingAudiobooksFiltered = trendingAudiobooks.filter(
+    (b: any) => b.book_content_type === 'audiobook' || b.content_type === 'audiobook'
+  );
+
+  return { banners, trendingBooks, trendingAudiobooks: trendingAudiobooksFiltered, trendingPodcasts };
 });
 
 export const fetchLibrary = createAsyncThunk('content/fetchLibrary', async (userId: string) => {
@@ -105,9 +97,6 @@ const contentSlice = createSlice({
         state.trendingBooks = action.payload.trendingBooks;
         state.trendingAudiobooks = action.payload.trendingAudiobooks;
         state.trendingPodcasts = action.payload.trendingPodcasts;
-        state.newReleases = action.payload.newReleases;
-        state.featured = action.payload.featured;
-        state.categories = action.payload.categories;
       })
       .addCase(fetchHomeData.rejected, (state, action) => {
         state.isLoading = false;

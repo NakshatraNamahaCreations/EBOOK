@@ -24,6 +24,7 @@ export const PodcastsPage = () => {
   
   // Author data for creation
   const [authors, setAuthors] = useState([]);
+  const [saving, setSaving] = useState(false);
 
   const fetchSeries = async () => {
     setLoading(true);
@@ -68,13 +69,14 @@ export const PodcastsPage = () => {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     const f = new FormData(e.target);
-    const data = { title: f.get('title'), description: f.get('description'), status: f.get('status') };
+    setSaving(true);
     try {
-      await api.put(`/admin/podcast-series/${editSeries._id}`, data);
+      await api.put(`/admin/podcast-series/${editSeries._id}`, f, { headers: { 'Content-Type': 'multipart/form-data' } });
       toast.success('Series updated');
       setEditSeries(null);
       fetchSeries();
     } catch (err) { toast.error(err.message || 'Failed to update'); }
+    finally { setSaving(false); }
   };
 
   // ── Episode CRUD ─────────────────────────────────────────────────
@@ -86,8 +88,7 @@ export const PodcastsPage = () => {
       episodeNumber: Number(f.get('episodeNumber')),
       youtubeUrl: f.get('youtubeUrl'),
       description: f.get('description'),
-      isFree: f.get('isFree') === 'true',
-      coinCost: Number(f.get('coinCost') || 0),
+      isFree: true,
     };
     try {
       await api.post(`/admin/podcast-series/${currentSeries._id}/episodes`, data);
@@ -105,8 +106,7 @@ export const PodcastsPage = () => {
       episodeNumber: Number(f.get('episodeNumber')),
       youtubeUrl: f.get('youtubeUrl'),
       description: f.get('description'),
-      isFree: f.get('isFree') === 'true',
-      coinCost: Number(f.get('coinCost') || 0),
+      isFree: true,
       status: f.get('status'),
     };
     try {
@@ -156,7 +156,7 @@ export const PodcastsPage = () => {
             { header: 'Ep.', key: 'episodeNumber', render: row => <span className="text-sm font-bold" style={{ color: 'var(--success)' }}>{row.episodeNumber}</span> },
             { header: 'Title', key: 'title', render: row => <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{row.title}</span> },
             { header: 'Status', key: 'status', render: row => <Badge variant={row.status === 'published' ? 'success' : 'neutral'}>{row.status}</Badge> },
-            { header: 'Access', key: 'isFree', render: row => row.isFree ? <Badge variant="success">Free</Badge> : <span className="text-xs font-semibold" style={{ color: '#f59e0b' }}>{row.coinCost} coins</span> },
+            { header: 'Access', key: 'isFree', render: () => <Badge variant="success">Free</Badge> },
             { header: '', key: 'actions', render: row => (
               <div className="flex justify-end gap-0.5">
                 <Button variant="ghost" size="sm" icon={Edit} title="Edit episode" onClick={() => setEditEpisode(row)} />
@@ -172,13 +172,10 @@ export const PodcastsPage = () => {
         <Modal isOpen={showAddEpisode} onClose={() => setShowAddEpisode(false)} title="Add Episode">
           <form className="space-y-4" onSubmit={handleAddEpisode}>
             <Input label="Episode Title" name="title" placeholder="Episode title" required />
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="Episode Number" name="episodeNumber" type="number" placeholder="1" required />
-              <Select label="Access" name="isFree" options={[{ value: 'true', label: 'Free' }, { value: 'false', label: 'Paid' }]} />
-            </div>
+            <Input label="Episode Number" name="episodeNumber" type="number" placeholder="1" required />
             <Input label="YouTube URL" name="youtubeUrl" placeholder="https://youtube.com/..." />
-            <Input label="Coin Cost" name="coinCost" type="number" placeholder="0" />
             <Textarea label="Description" name="description" rows={2} placeholder="Episode description..." />
+            <input type="hidden" name="isFree" value="true" />
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="secondary" onClick={() => setShowAddEpisode(false)}>Cancel</Button>
               <Button type="submit">Add Episode</Button>
@@ -191,18 +188,12 @@ export const PodcastsPage = () => {
           <Modal isOpen={!!editEpisode} onClose={() => setEditEpisode(null)} title="Edit Episode">
             <form className="space-y-4" onSubmit={handleEditEpisode}>
               <Input label="Episode Title" name="title" defaultValue={editEpisode.title} required />
-              <div className="grid grid-cols-2 gap-4">
-                <Input label="Episode Number" name="episodeNumber" type="number" defaultValue={editEpisode.episodeNumber} required />
-                <Select label="Access" name="isFree" defaultValue={String(editEpisode.isFree)}
-                  options={[{ value: 'true', label: 'Free' }, { value: 'false', label: 'Paid' }]} />
-              </div>
+              <Input label="Episode Number" name="episodeNumber" type="number" defaultValue={editEpisode.episodeNumber} required />
               <Input label="YouTube URL" name="youtubeUrl" defaultValue={editEpisode.youtubeUrl || ''} placeholder="https://youtube.com/..." />
-              <div className="grid grid-cols-2 gap-4">
-                <Input label="Coin Cost" name="coinCost" type="number" defaultValue={editEpisode.coinCost || 0} />
-                <Select label="Status" name="status" defaultValue={editEpisode.status}
-                  options={[{ value: 'draft', label: 'Draft' }, { value: 'published', label: 'Published' }, { value: 'archived', label: 'Archived' }]} />
-              </div>
+              <Select label="Status" name="status" defaultValue={editEpisode.status}
+                options={[{ value: 'draft', label: 'Draft' }, { value: 'published', label: 'Published' }, { value: 'archived', label: 'Archived' }]} />
               <Textarea label="Description" name="description" rows={2} defaultValue={editEpisode.description || ''} />
+              <input type="hidden" name="isFree" value="true" />
               <div className="flex justify-end gap-3 pt-2">
                 <Button variant="secondary" onClick={() => setEditEpisode(null)}>Cancel</Button>
                 <Button type="submit">Save Changes</Button>
@@ -220,12 +211,13 @@ export const PodcastsPage = () => {
       header: 'Series', key: 'title', align: 'left',
       render: (row) => (
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 2px 8px rgba(16,185,129,0.2)' }}>
-            <Radio className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{row.title}</p>
-          </div>
+          {row.thumbnail
+            ? <img src={row.thumbnail} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+            : <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 2px 8px rgba(16,185,129,0.2)' }}>
+                <Radio className="w-4 h-4 text-white" />
+              </div>
+          }
+          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{row.title}</p>
         </div>
       ),
     },
@@ -260,15 +252,17 @@ export const PodcastsPage = () => {
 
       {/* Create Modal */}
       <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create Podcast Series">
-        <form className="space-y-4" onSubmit={async (e) => {
+        <form className="space-y-4" encType="multipart/form-data" onSubmit={async (e) => {
           e.preventDefault();
           const f = new FormData(e.target);
+          setSaving(true);
           try {
-            await api.post('/admin/podcast-series', { title: f.get('title'), description: f.get('description'), authorId: f.get('authorId') });
+            await api.post('/admin/podcast-series', f, { headers: { 'Content-Type': 'multipart/form-data' } });
             toast.success('Series created');
             setShowCreate(false);
             fetchSeries();
           } catch (err) { toast.error(err.message || 'Failed to create'); }
+          finally { setSaving(false); }
         }}>
           <Input label="Series Title" name="title" placeholder="Enter title" required />
           <Select label="Author" name="authorId" required options={[
@@ -276,9 +270,13 @@ export const PodcastsPage = () => {
             ...authors.map(a => ({ value: a._id, label: a.displayName || a.name }))
           ]} />
           <Textarea label="Description" name="description" placeholder="About this podcast..." rows={3} required />
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Cover Image</label>
+            <input type="file" name="thumbnail" accept="image/*" className="w-full text-sm" style={{ color: 'var(--text-primary)' }} />
+          </div>
           <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" onClick={() => setShowCreate(false)}>Cancel</Button>
-            <Button type="submit">Create</Button>
+            <Button variant="secondary" onClick={() => setShowCreate(false)} disabled={saving}>Cancel</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Creating...' : 'Create'}</Button>
           </div>
         </form>
       </Modal>
@@ -286,14 +284,21 @@ export const PodcastsPage = () => {
       {/* Edit Series Modal */}
       {editSeries && (
         <Modal isOpen={!!editSeries} onClose={() => setEditSeries(null)} title="Edit Series">
-          <form className="space-y-4" onSubmit={handleEditSubmit}>
+          <form className="space-y-4" encType="multipart/form-data" onSubmit={handleEditSubmit}>
             <Input label="Series Title" name="title" defaultValue={editSeries.title} required />
             <Textarea label="Description" name="description" defaultValue={editSeries.description} rows={3} />
             <Select label="Status" name="status" defaultValue={editSeries.status}
               options={[{ value: 'draft', label: 'Draft' }, { value: 'published', label: 'Published' }, { value: 'archived', label: 'Archived' }]} />
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Cover Image</label>
+              {editSeries.thumbnail && (
+                <img src={editSeries.thumbnail} alt="Current cover" className="w-16 h-16 object-cover rounded-lg mb-2" />
+              )}
+              <input type="file" name="thumbnail" accept="image/*" className="w-full text-sm" style={{ color: 'var(--text-primary)' }} />
+            </div>
             <div className="flex justify-end gap-3 pt-2">
-              <Button variant="secondary" onClick={() => setEditSeries(null)}>Cancel</Button>
-              <Button type="submit">Save Changes</Button>
+              <Button variant="secondary" onClick={() => setEditSeries(null)} disabled={saving}>Cancel</Button>
+              <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
             </div>
           </form>
         </Modal>

@@ -29,9 +29,10 @@ exports.createBanner = async (req, res, next) => {
 exports.updateBanner = async (req, res, next) => {
   try {
     const data = {};
-    // Only include fields that have actual values (skip empty strings to avoid cast errors)
+    // Allow title to be cleared (empty string). Skip empty strings only for non-title fields.
+    const ALLOW_EMPTY = new Set(['title']);
     for (const [key, val] of Object.entries(req.body)) {
-      if (val !== '' && val !== undefined) data[key] = val;
+      if (val !== undefined && (val !== '' || ALLOW_EMPTY.has(key))) data[key] = val;
     }
     if (req.file?.location) {
       data.imageUrl = req.file.location;

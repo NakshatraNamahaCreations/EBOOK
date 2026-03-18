@@ -21,6 +21,7 @@ import { typography } from '../../src/theme/typography';
 import { spacing } from '../../src/theme/spacing';
 import { contentService } from '../../src/services/content.service';
 import { Content, Chapter } from '../../src/types';
+import { useAudioPlayer } from '../../src/context/AudioPlayerContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const COVER_SIZE = SCREEN_WIDTH - 80;
@@ -41,8 +42,9 @@ function formatDuration(seconds?: number): string {
 export default function PlayerScreen() {
   const { id, chapterIndex } = useLocalSearchParams<{ id: string; chapterIndex?: string }>();
   const router = useRouter();
+  const { soundRef, chapterIdxRef, setTrackInfo, setIsPlaying: setCtxIsPlaying } = useAudioPlayer();
+
   const [audiobook, setAudiobook] = useState<Content | null>(null);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -51,14 +53,17 @@ export default function PlayerScreen() {
   const [currentChapterIdx, setCurrentChapterIdx] = useState(0);
   const [showChapters, setShowChapters] = useState(false);
 
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const chapterIdxRef = useRef(0);
   const chaptersRef = useRef<Chapter[]>([]);
+  const audiobookRef = useRef<Content | null>(null);
 
   useEffect(() => {
     loadAudiobook();
     return () => {
-      soundRef.current?.unloadAsync();
+      // On unmount: detach status callback so no React state updates happen
+      // Do NOT unload — sound keeps playing via context
+      if (soundRef.current) {
+        soundRef.current.setOnPlaybackStatusUpdate(null);
+      }
     };
   }, [id]);
 
@@ -66,6 +71,7 @@ export default function PlayerScreen() {
     try {
       const data = await contentService.getAudiobookById(id);
       setAudiobook(data);
+      audiobookRef.current = data;
       chaptersRef.current = data.chapters || [];
 
       await Audio.setAudioModeAsync({
@@ -80,7 +86,48 @@ export default function PlayerScreen() {
           : (data.chapters?.findIndex((ch) => ch.audio_url) ?? -1);
 
       if (startIndex >= 0) {
-        await loadChapter(data.chapters, startIndex);
+        const chapter = data.chapters[startIndex];
+        // Stop previous if any
+        if (soundRef.current) {
+          soundRef.current.setOnPlaybackStatusUpdate(null);
+          try { await soundRef.current.stopAsync(); } catch {}
+          try { await soundRef.current.unloadAsync(); } catch {}
+          soundRef.current = null;
+        }
+        setCurrentTime(0);
+        setDuration(chapter.duration || 0);
+
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri: chapter.audio_url! },
+          { shouldPlay: true }
+        );
+
+        newSound.setOnPlaybackStatusUpdate((status) => {
+          if (!status.isLoaded) return;
+          setCurrentTime(status.positionMillis / 1000);
+          if (status.durationMillis) setDuration(status.durationMillis / 1000);
+          setIsPlaying(status.isPlaying);
+          setCtxIsPlaying(status.isPlaying);
+          if (status.didJustFinish) {
+            const next = chapterIdxRef.current + 1;
+            if (next < chaptersRef.current.length && chaptersRef.current[next]?.audio_url) {
+              loadChapter(chaptersRef.current, next);
+            }
+          }
+        });
+
+        soundRef.current = newSound;
+        chapterIdxRef.current = startIndex;
+        setCurrentChapterIdx(startIndex);
+        setCtxIsPlaying(true);
+
+        setTrackInfo({
+          bookId: id,
+          bookTitle: data.title,
+          chapterTitle: chapter.title,
+          coverImage: data.cover_image,
+          chapterIndex: startIndex,
+        });
       } else {
         setDuration(data.duration || 0);
       }
@@ -95,34 +142,52 @@ export default function PlayerScreen() {
     const chapter = chapters[index];
     if (!chapter?.audio_url) return;
 
-    await soundRef.current?.unloadAsync();
-    soundRef.current = null;
-    setSound(null);
+    // Stop and unload previous
+    if (soundRef.current) {
+      soundRef.current.setOnPlaybackStatusUpdate(null);
+      try { await soundRef.current.stopAsync(); } catch {}
+      try { await soundRef.current.unloadAsync(); } catch {}
+      soundRef.current = null;
+    }
     setCurrentTime(0);
     setDuration(chapter.duration || 0);
     setIsPlaying(false);
 
     const { sound: newSound } = await Audio.Sound.createAsync(
       { uri: chapter.audio_url },
-      { shouldPlay: true },
-      (status) => {
-        if (status.isLoaded) {
-          setCurrentTime(status.positionMillis / 1000);
-          if (status.durationMillis) setDuration(status.durationMillis / 1000);
-          setIsPlaying(status.isPlaying);
-          if (status.didJustFinish) {
-            const next = chapterIdxRef.current + 1;
-            if (next < chaptersRef.current.length && chaptersRef.current[next]?.audio_url) {
-              loadChapter(chaptersRef.current, next);
-            }
-          }
+      { shouldPlay: true }
+    );
+
+    newSound.setOnPlaybackStatusUpdate((status) => {
+      if (!status.isLoaded) return;
+      setCurrentTime(status.positionMillis / 1000);
+      if (status.durationMillis) setDuration(status.durationMillis / 1000);
+      setIsPlaying(status.isPlaying);
+      setCtxIsPlaying(status.isPlaying);
+      if (status.didJustFinish) {
+        const next = chapterIdxRef.current + 1;
+        if (next < chaptersRef.current.length && chaptersRef.current[next]?.audio_url) {
+          loadChapter(chaptersRef.current, next);
         }
       }
-    );
+    });
+
     soundRef.current = newSound;
-    setSound(newSound);
     chapterIdxRef.current = index;
     setCurrentChapterIdx(index);
+
+    // Update global mini-player info
+    const ab = audiobookRef.current;
+    if (ab) {
+      setTrackInfo({
+        bookId: id,
+        bookTitle: ab.title,
+        chapterTitle: chapter.title,
+        coverImage: ab.cover_image,
+        chapterIndex: index,
+      });
+    }
+    setCtxIsPlaying(true);
   };
 
   const goToChapter = (index: number) => {
@@ -144,21 +209,21 @@ export default function PlayerScreen() {
   ).current;
 
   const togglePlayback = async () => {
-    if (!sound) {
+    if (!soundRef.current) {
       Alert.alert('Not Ready', 'No audio available for this chapter.');
       return;
     }
     if (isPlaying) {
-      await sound.pauseAsync();
+      await soundRef.current.pauseAsync();
     } else {
-      await sound.playAsync();
+      await soundRef.current.playAsync();
     }
   };
 
   const skip = (seconds: number) => {
     const newTime = Math.max(0, Math.min(duration, currentTime + seconds));
     setCurrentTime(newTime);
-    if (sound) sound.setPositionAsync(newTime * 1000);
+    if (soundRef.current) soundRef.current.setPositionAsync(newTime * 1000);
   };
 
   const cycleSpeed = async () => {
@@ -166,12 +231,12 @@ export default function PlayerScreen() {
     const nextIndex = (speeds.indexOf(playbackSpeed) + 1) % speeds.length;
     const newSpeed = speeds[nextIndex];
     setPlaybackSpeed(newSpeed);
-    if (sound) await sound.setRateAsync(newSpeed, true);
+    if (soundRef.current) await soundRef.current.setRateAsync(newSpeed, true);
   };
 
   const handleSliderChange = (value: number) => {
     setCurrentTime(value);
-    if (sound) sound.setPositionAsync(value * 1000);
+    if (soundRef.current) soundRef.current.setPositionAsync(value * 1000);
   };
 
   const currentChapter = audiobook?.chapters?.[currentChapterIdx];

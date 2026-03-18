@@ -1,15 +1,25 @@
 const express = require('express');
 const podcastController = require('./podcast.controller');
 const { authenticate, authorize } = require('../../common/auth.middleware');
+const uploadImage = require('../../common/uploadImage');
+
+const optionalImage = (req, res, next) => {
+  const ct = req.headers['content-type'] || '';
+  if (!ct.includes('multipart/form-data')) return next();
+  uploadImage.single('thumbnail')(req, res, (err) => {
+    if (err) return next(err);
+    next();
+  });
+};
 
 // ─── Admin Podcast Routes (/api/v1/admin/podcast-series) ──
 const adminRouter = express.Router();
 adminRouter.use(authenticate, authorize('admin', 'superadmin'));
 
-adminRouter.post('/', podcastController.createSeries);
+adminRouter.post('/', optionalImage, podcastController.createSeries);
 adminRouter.get('/', podcastController.getAllSeries);
 adminRouter.get('/:id', podcastController.getSeries);
-adminRouter.put('/:id', podcastController.updateSeries);
+adminRouter.put('/:id', optionalImage, podcastController.updateSeries);
 adminRouter.delete('/:id', podcastController.deleteSeries);
 
 // Episodes (nested under series)

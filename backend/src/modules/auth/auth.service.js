@@ -5,19 +5,26 @@ const User = require('../users/User.model');
 const Admin = require('../users/Admin.model');
 const Author = require('../../modules/authors/Author.model');
 const Wallet = require('../wallet/Wallet.model');
+const WalletTransaction = require('../wallet/WalletTransaction.model');
+const Referral = require('../referrals/Referral.model');
 const DeviceSession = require('../security/DeviceSession.model');
 const AppError = require('../../common/AppError');
 const otpService = require('./otp.service');
 const PhoneOTP = require('./PhoneOTP.model');
 
+const REFERRAL_REWARD_COINS = 10;
+
 /**
  * Generate access and refresh tokens
  */
 const generateTokens = (userId, role) => {
+  const isAdmin = role === 'admin' || role === 'superadmin' || role === 'author';
+  const accessExpiry = isAdmin ? config.jwt.adminExpiry : config.jwt.readerExpiry;
+
   const accessToken = jwt.sign(
     { userId, role },
     config.jwt.accessSecret,
-    { expiresIn: config.jwt.accessExpiry }
+    { expiresIn: accessExpiry }
   );
 
   const refreshToken = jwt.sign(
@@ -30,37 +37,108 @@ const generateTokens = (userId, role) => {
 };
 
 /**
+ * Format user object for mobile app response
+ */
+const formatMobileUser = async (user) => {
+  const wallet = await Wallet.findOne({ userId: user._id });
+  return {
+    id: user._id.toString(),
+    name: user.name,
+    email: user.email,
+    mobile_number: user.phone || '',
+    country_code: '',
+    profile_image: user.profileImage || '',
+    coin_balance: wallet ? wallet.availableCoins : 0,
+    is_premium: user.isPremium || false,
+    referral_code: user.referralCode || '',
+    created_at: user.createdAt ? user.createdAt.toISOString() : new Date().toISOString(),
+    preferences: user.preferences || {},
+  };
+};
+
+/**
  * Register a new reader
  */
-const register = async ({ name, email, password, phone }) => {
+const register = async ({ name, email, password, phone, referralCode }) => {
   const existing = await User.findOne({ email: email.toLowerCase() });
   if (existing) {
     throw AppError.conflict('Email already registered');
+  }
+
+  if (phone) {
+    const phoneExists = await User.findOne({ phone: phone.trim() });
+    if (phoneExists) throw AppError.conflict('Phone number already registered');
   }
 
   const user = new User({
     name,
     email: email.toLowerCase(),
     phone: phone || '',
-    passwordHash: password, // pre-save hook will hash
+    passwordHash: password,
     role: 'reader',
+    isVerified: true,
   });
   await user.save();
 
-  // Create wallet for reader
   await Wallet.create({ userId: user._id });
 
+  // ── Apply referral code: award 10 coins to referrer ──────────
+  if (referralCode) {
+    const referrer = await User.findOne({ referralCode: referralCode.toUpperCase().trim() });
+    if (referrer && referrer._id.toString() !== user._id.toString()) {
+      const referrerWallet = await Wallet.findOne({ userId: referrer._id });
+      if (referrerWallet) {
+        referrerWallet.availableCoins += REFERRAL_REWARD_COINS;
+        referrerWallet.totalCoins += REFERRAL_REWARD_COINS;
+        await referrerWallet.save();
+
+        await WalletTransaction.create({
+          userId: referrer._id,
+          type: 'credit',
+          source: 'referral',
+          coins: REFERRAL_REWARD_COINS,
+          balanceAfter: referrerWallet.availableCoins,
+          notes: `Referral reward: ${user.name} joined using your code`,
+        });
+      }
+
+      await Referral.create({
+        referrerId: referrer._id,
+        refereeId: user._id,
+        referralCode: referralCode.toUpperCase().trim(),
+        status: 'completed',
+        rewardGiven: true,
+        rewardAmount: REFERRAL_REWARD_COINS,
+      });
+    }
+  }
+
   const tokens = generateTokens(user._id, user.role);
-  return { user: user.toSafeJSON(), ...tokens };
+  const formattedUser = await formatMobileUser(user);
+  return {
+    access_token: tokens.accessToken,
+    refresh_token: tokens.refreshToken,
+    is_new_user: true,
+    user: formattedUser,
+  };
 };
 
 /**
- * Login for any role
+ * Login for any role — identifier can be email or phone number
  */
-const login = async ({ email, password, expectedRole }) => {
-  const user = await User.findOne({ email: email.toLowerCase() }).select('+passwordHash');
+const login = async ({ identifier, email, password, expectedRole }) => {
+  const lookupValue = (identifier || email || '').trim();
+  const isEmail = lookupValue.includes('@');
+
+  let user;
+  if (isEmail) {
+    user = await User.findOne({ email: lookupValue.toLowerCase() }).select('+passwordHash');
+  } else {
+    user = await User.findOne({ phone: lookupValue }).select('+passwordHash');
+  }
+
   if (!user) {
-    throw AppError.unauthorized('Invalid email or password');
+    throw AppError.unauthorized('Invalid credentials');
   }
 
   if (expectedRole && user.role !== expectedRole && user.role !== 'superadmin') {
@@ -73,33 +151,38 @@ const login = async ({ email, password, expectedRole }) => {
 
   const isMatch = await user.comparePassword(password);
   if (!isMatch) {
-    throw AppError.unauthorized('Invalid email or password');
+    throw AppError.unauthorized('Invalid credentials');
   }
 
-  // Update last active
   user.lastActive = new Date();
   await user.save();
 
   const tokens = generateTokens(user._id, user.role);
 
-  // Get role-specific data
-  let roleData = {};
-  if (user.role === 'admin' || user.role === 'superadmin') {
-    const admin = await Admin.findOne({ userId: user._id });
-    roleData.permissions = admin ? admin.permissions : [];
-  }
-  if (user.role === 'author') {
-    const author = await Author.findOne({ userId: user._id });
-    if (author && !author.isApproved) {
-      throw AppError.forbidden('Your author account is pending approval');
+  // Admin / author — return existing format for web panels
+  if (user.role !== 'reader') {
+    let roleData = {};
+    if (user.role === 'admin' || user.role === 'superadmin') {
+      const admin = await Admin.findOne({ userId: user._id });
+      roleData.permissions = admin ? admin.permissions : [];
     }
-    roleData.author = author;
+    if (user.role === 'author') {
+      const author = await Author.findOne({ userId: user._id });
+      if (author && !author.isApproved) {
+        throw AppError.forbidden('Your author account is pending approval');
+      }
+      roleData.author = author;
+    }
+    return { user: user.toSafeJSON(), ...roleData, ...tokens };
   }
 
+  // Reader — return mobile-friendly format
+  const formattedUser = await formatMobileUser(user);
   return {
-    user: user.toSafeJSON(),
-    ...roleData,
-    ...tokens,
+    access_token: tokens.accessToken,
+    refresh_token: tokens.refreshToken,
+    is_new_user: false,
+    user: formattedUser,
   };
 };
 
@@ -197,7 +280,7 @@ const verifyOTP = async (phone, otp) => {
     isNewUser = true;
     user = new User({
       name: 'Reader',
-      email: `phone_${Date.now()}@bookvault.local`,
+      email: `phone_${Date.now()}@saliljaveri.local`,
       phone: normalizedPhone,
       phoneVerified: true,
       passwordHash: `phone_${normalizedPhone}`,

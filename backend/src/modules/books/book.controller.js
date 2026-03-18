@@ -10,6 +10,12 @@ const buildBookData = (body, file) => {
   if (typeof data.genres === 'string') {
     try { data.genres = JSON.parse(data.genres); } catch { data.genres = []; }
   }
+  // Parse FormData string values to proper types
+  if (typeof data.isFree === 'string') data.isFree = data.isFree === 'true';
+  if (typeof data.ebookPrice === 'string') data.ebookPrice = Number(data.ebookPrice) || 0;
+  if (typeof data.audiobookPrice === 'string') data.audiobookPrice = Number(data.audiobookPrice) || 0;
+  if (typeof data.comboPrice === 'string') data.comboPrice = Number(data.comboPrice) || 0;
+  if (data.contentType && !['ebook', 'audiobook'].includes(data.contentType)) delete data.contentType;
   return data;
 };
 
@@ -42,7 +48,7 @@ const adminUpdateBook = asyncHandler(async (req, res) => {
 
 const adminDeleteBook = asyncHandler(async (req, res) => {
   await bookService.deleteBook(req.params.id);
-  success(res, null, 'Book archived successfully');
+  success(res, null, 'Book and chapters deleted permanently');
 });
 
 const adminToggleFeatured = asyncHandler(async (req, res) => {

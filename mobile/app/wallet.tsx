@@ -5,9 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
-  Platform,
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,64 +13,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { walletService } from '../src/services/wallet.service';
 import { useAppSelector } from '../src/hooks/useAppSelector';
-import { useAppDispatch } from '../src/hooks/useAppDispatch';
-import { updateCoinBalance } from '../src/store/slices/authSlice';
-import { CoinTransaction } from '../src/types';
 
-interface CoinPack {
-  id: string;
-  name: string;
+// Matches actual backend WalletTransaction fields
+interface WalletTxn {
+  _id: string;
+  source: string;   // 'referral' | 'bonus' | 'unlock' | 'coin_pack' | 'refund' | 'adjustment'
+  type: string;     // 'credit' | 'debit'
   coins: number;
-  bonus_coins: number;
-  total_coins: number;
-  price_inr: number;
-  price_usd?: number;
-  is_offer: boolean;
-  offer_label?: string | null;
+  notes: string;
+  createdAt: string;
 }
-
-const fallbackPacks: CoinPack[] = [
-  {
-    id: '1',
-    name: 'Premium Pack',
-    coins: 1200,
-    bonus_coins: 200,
-    total_coins: 1400,
-    price_inr: 899,
-    is_offer: true,
-    offer_label: 'Best Value!',
-  },
-  {
-    id: '2',
-    name: 'Ultra Pack',
-    coins: 3000,
-    bonus_coins: 750,
-    total_coins: 3750,
-    price_inr: 1999,
-    is_offer: true,
-    offer_label: '25% Bonus!',
-  },
-  {
-    id: '3',
-    name: 'Starter Pack',
-    coins: 400,
-    bonus_coins: 0,
-    total_coins: 400,
-    price_inr: 299,
-    is_offer: false,
-    offer_label: null,
-  },
-  {
-    id: '4',
-    name: 'Pro Pack',
-    coins: 800,
-    bonus_coins: 100,
-    total_coins: 900,
-    price_inr: 599,
-    is_offer: false,
-    offer_label: null,
-  },
-];
 
 function formatDate(dateStr: string) {
   try {
@@ -90,13 +40,13 @@ function getTxnIcon(
   type: string
 ): { name: keyof typeof Ionicons.glyphMap; bg: string; color: string } {
   switch (type) {
-    case 'purchase':
-      return { name: 'add-outline', bg: '#18263E', color: '#60A5FA' };
+    case 'referral':
+      return { name: 'people-outline', bg: '#1D2B1F', color: '#4ADE80' };
+    case 'bonus':
+      return { name: 'gift-outline', bg: '#1D2B1F', color: '#4ADE80' };
     case 'debit':
     case 'unlock':
       return { name: 'arrow-up-outline', bg: '#241D24', color: '#F87171' };
-    case 'bonus':
-      return { name: 'gift-outline', bg: '#1D2B1F', color: '#4ADE80' };
     case 'refund':
       return { name: 'refresh-outline', bg: '#1D2432', color: '#A78BFA' };
     default:
@@ -104,22 +54,14 @@ function getTxnIcon(
   }
 }
 
-export default function WalletScreen({ navigation }: any) {
-  const dispatch = useAppDispatch();
+export default function WalletScreen() {
   const { user } = useAppSelector((state) => state.auth);
 
-  const [transactions, setTransactions] = useState<CoinTransaction[]>([]);
+  const [transactions, setTransactions] = useState<WalletTxn[]>([]);
   const [txPage, setTxPage] = useState(1);
   const [txHasMore, setTxHasMore] = useState(false);
-  const [packs, setPacks] = useState<CoinPack[]>(fallbackPacks);
-  const [buyingPackId, setBuyingPackId] = useState<string | null>(null);
-  const [loadingPacks, setLoadingPacks] = useState(true);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [loadingMoreTransactions, setLoadingMoreTransactions] = useState(false);
-
-  useEffect(() => {
-    loadPacks();
-  }, []);
 
   useEffect(() => {
     if (user?.id) {
@@ -127,52 +69,34 @@ export default function WalletScreen({ navigation }: any) {
     }
   }, [user?.id]);
 
+  const referralTransactions = useMemo(() => {
+    return transactions.filter(
+      (txn) => txn.source === 'referral' || txn.source === 'bonus'
+    );
+  }, [transactions]);
+
   const thisMonthTotal = useMemo(() => {
     const now = new Date();
-    return transactions
+    return referralTransactions
       .filter((txn) => {
-        const d = new Date(txn.created_at);
+        const d = new Date(txn.createdAt);
         return (
           d.getMonth() === now.getMonth() &&
-          d.getFullYear() === now.getFullYear() &&
-          (txn.transaction_type === 'purchase' ||
-            txn.transaction_type === 'bonus' ||
-            txn.transaction_type === 'refund')
+          d.getFullYear() === now.getFullYear()
         );
       })
-      .reduce((sum, txn) => sum + Number(txn.amount || 0), 0);
-  }, [transactions]);
+      .reduce((sum, txn) => sum + Number(txn.coins || 0), 0);
+  }, [referralTransactions]);
 
   const lifetimeCredits = useMemo(() => {
-    return transactions
-      .filter(
-        (txn) =>
-          txn.transaction_type === 'purchase' ||
-          txn.transaction_type === 'bonus' ||
-          txn.transaction_type === 'refund'
-      )
-      .reduce((sum, txn) => sum + Number(txn.amount || 0), 0);
-  }, [transactions]);
-
-  const loadPacks = async () => {
-    try {
-      setLoadingPacks(true);
-      const data = await walletService.getCoinPacks();
-      if (Array.isArray(data) && data.length > 0) {
-        setPacks(data);
-      } else {
-        setPacks(fallbackPacks);
-      }
-    } catch (error) {
-      setPacks(fallbackPacks);
-    } finally {
-      setLoadingPacks(false);
-    }
-  };
+    return referralTransactions.reduce(
+      (sum, txn) => sum + Number(txn.coins || 0),
+      0
+    );
+  }, [referralTransactions]);
 
   const loadTransactions = async (page = 1, append = false) => {
     if (!user?.id) return;
-
     try {
       if (page === 1) setLoadingTransactions(true);
       else setLoadingMoreTransactions(true);
@@ -185,7 +109,7 @@ export default function WalletScreen({ navigation }: any) {
       } else {
         if (!append) setTransactions([]);
       }
-    } catch (error) {
+    } catch {
       if (!append) setTransactions([]);
     } finally {
       setLoadingTransactions(false);
@@ -193,60 +117,20 @@ export default function WalletScreen({ navigation }: any) {
     }
   };
 
-  const handleLoadMoreTransactions = () => {
+  const handleLoadMore = () => {
     if (!txHasMore || loadingMoreTransactions) return;
     loadTransactions(txPage + 1, true);
-  };
-
-  const handleBuyCoins = async (pack: CoinPack) => {
-    console.log('Purchase button clicked for pack:', pack.id);
-    try {
-      setBuyingPackId(pack.id);
-      const userIdStr = user?.id || (user as any)?._id || 'unknown';
-      console.log('User ID resolved to:', userIdStr, 'adding coins:', pack.total_coins);
-      
-      const result = await walletService.addCoins(userIdStr, pack.total_coins);
-      console.log('Backend response after adding coins:', result);
-      
-      const updatedBalance = result?.wallet?.availableCoins ?? ((user?.coin_balance || 0) + pack.total_coins);
-      console.log('New coin balance calculated:', updatedBalance);
-      
-      dispatch(updateCoinBalance(updatedBalance));
-      console.log('Dispatched updateCoinBalance.');
-      
-      Alert.alert('Success', `${pack.total_coins} coins added to your wallet.`);
-      await loadTransactions();
-      console.log('Transactions reloaded successfully.');
-    } catch (error: any) {
-      console.error('Wallet Purchase Error:', error);
-      Alert.alert('Error', error?.response?.data?.message || error?.message || 'Failed to purchase coins. Please try again.');
-    } finally {
-      setBuyingPackId(null);
-    }
-  };
-
-  const handleGoBack = () => {
-    try {
-      if (navigation?.goBack) {
-        navigation.goBack();
-      }
-    } catch (error) {
-      // no-op
-    }
   };
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#070B14" />
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-       
-
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          
-
+          {/* Balance Card */}
           <LinearGradient
             colors={['#1D2A40', '#0F172A']}
             start={{ x: 0, y: 0 }}
@@ -255,7 +139,6 @@ export default function WalletScreen({ navigation }: any) {
           >
             <View style={styles.balanceHeader}>
               <Text style={styles.balanceLabel}>Total Balance</Text>
-
               <View style={styles.availableBadge}>
                 <Text style={styles.availableBadgeText}>Available</Text>
               </View>
@@ -278,9 +161,7 @@ export default function WalletScreen({ navigation }: any) {
                   +{thisMonthTotal.toLocaleString()} coins
                 </Text>
               </View>
-
               <View style={styles.statVerticalDivider} />
-
               <View style={styles.statBlock}>
                 <Text style={styles.statLabel}>Lifetime</Text>
                 <Text style={styles.statValue}>
@@ -290,119 +171,24 @@ export default function WalletScreen({ navigation }: any) {
             </View>
           </LinearGradient>
 
-
-
+          {/* Referral Coins Transactions */}
           <View style={styles.sectionWrap}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Purchase Coins</Text>
-              <TouchableOpacity>
-                <Text style={styles.sectionLink}>View All</Text>
-              </TouchableOpacity>
-            </View>
-
-            {loadingPacks ? (
-              <ActivityIndicator color="#60A5FA" style={{ marginTop: 20 }} />
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.packsRow}
-              >
-                {packs.map((pack) => {
-                  const isBuying = buyingPackId === pack.id;
-
-                  return (
-                    <View
-                      key={pack.id}
-                      style={styles.packCard}
-                    >
-                      {pack.offer_label ? (
-                        <View style={styles.packOfferWrap}>
-                          <View style={styles.packOfferBadge}>
-                            <Text style={styles.packOfferText}>
-                              {pack.offer_label}
-                            </Text>
-                          </View>
-                        </View>
-                      ) : null}
-
-                      <Text style={styles.packCoins}>
-                        {pack.total_coins.toLocaleString()}
-                      </Text>
-                      <Text style={styles.packCoinsLabel}>coins</Text>
-
-                      {pack.bonus_coins > 0 ? (
-                        <View style={styles.bonusRow}>
-                          <Ionicons
-                            name="gift-outline"
-                            size={13}
-                            color="#60A5FA"
-                          />
-                          <Text style={styles.bonusText}>
-                            +{pack.bonus_coins} bonus
-                          </Text>
-                        </View>
-                      ) : (
-                        <View style={{ height: 20 }} />
-                      )}
-
-                      <Text style={styles.packName}>{pack.name}</Text>
-
-                      <Text style={styles.packPrice}>
-                        ₹{pack.price_inr.toLocaleString()}
-                      </Text>
-
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() => handleBuyCoins(pack)}
-                        disabled={!!buyingPackId}
-                        style={{ marginTop: 'auto' }}
-                      >
-                        <LinearGradient
-                          colors={['#6AA8FF', '#3B82F6']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={[styles.purchaseButton, { marginTop: 0 }]}
-                        >
-                          {isBuying ? (
-                            <ActivityIndicator size="small" color="#FFFFFF" />
-                          ) : (
-                            <Text style={styles.purchaseButtonText}>Purchase</Text>
-                          )}
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })}
-              </ScrollView>
-            )}
-          </View>
-
-          <View style={styles.sectionWrap}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Transaction History</Text>
-              <TouchableOpacity>
-                <Text style={styles.sectionLink}>Filter</Text>
-              </TouchableOpacity>
+              <Text style={styles.sectionTitle}>Referral Coins</Text>
             </View>
 
             {loadingTransactions ? (
               <ActivityIndicator color="#60A5FA" style={{ marginTop: 20 }} />
-            ) : transactions.length > 0 ? (
+            ) : referralTransactions.length > 0 ? (
               <View style={styles.transactionList}>
-                {transactions.map((txn, index) => {
-                  const icon = getTxnIcon(txn.transaction_type);
-                  const isCredit =
-                    txn.transaction_type === 'purchase' ||
-                    txn.transaction_type === 'bonus' ||
-                    txn.transaction_type === 'refund';
-
+                {referralTransactions.map((txn, index) => {
+                  const icon = getTxnIcon(txn.source);
                   return (
                     <View
-                      key={txn.id}
+                      key={txn._id}
                       style={[
                         styles.transactionItem,
-                        index === transactions.length - 1 && {
+                        index === referralTransactions.length - 1 && {
                           borderBottomWidth: 0,
                         },
                       ]}
@@ -413,34 +199,21 @@ export default function WalletScreen({ navigation }: any) {
                           { backgroundColor: icon.bg },
                         ]}
                       >
-                        <Ionicons
-                          name={icon.name}
-                          size={18}
-                          color={icon.color}
-                        />
+                        <Ionicons name={icon.name} size={18} color={icon.color} />
                       </View>
 
                       <View style={styles.transactionInfo}>
-                        <Text
-                          numberOfLines={1}
-                          style={styles.transactionTitle}
-                        >
-                          {txn.description || 'Transaction'}
+                        <Text numberOfLines={1} style={styles.transactionTitle}>
+                          {txn.notes || 'Referral Reward'}
                         </Text>
                         <Text style={styles.transactionDate}>
-                          {formatDate(txn.created_at)}
+                          {formatDate(txn.createdAt)}
                         </Text>
                       </View>
 
                       <View style={styles.transactionAmountWrap}>
-                        <Text
-                          style={[
-                            styles.transactionAmount,
-                            { color: isCredit ? '#60A5FA' : '#F87171' },
-                          ]}
-                        >
-                          {isCredit ? '+' : '-'}
-                          {txn.amount}
+                        <Text style={[styles.transactionAmount, { color: '#4ADE80' }]}>
+                          +{txn.coins}
                         </Text>
                         <Text style={styles.transactionCoinsText}>coins</Text>
                       </View>
@@ -450,38 +223,30 @@ export default function WalletScreen({ navigation }: any) {
               </View>
             ) : null}
 
-            {/* Load More / pagination info */}
-            {transactions.length > 0 && (
+            {referralTransactions.length > 0 && (
               <View style={styles.txPaginationRow}>
                 {loadingMoreTransactions ? (
                   <ActivityIndicator color="#60A5FA" />
                 ) : txHasMore ? (
-                  <TouchableOpacity
-                    style={styles.loadMoreBtn}
-                    onPress={handleLoadMoreTransactions}
-                  >
+                  <TouchableOpacity style={styles.loadMoreBtn} onPress={handleLoadMore}>
                     <Text style={styles.loadMoreText}>Load More</Text>
                   </TouchableOpacity>
                 ) : (
                   <Text style={styles.txEndText}>
-                    Showing all {transactions.length} transactions
+                    Showing all {referralTransactions.length} transactions
                   </Text>
                 )}
               </View>
             )}
 
-            {transactions.length === 0 && !loadingTransactions && (
+            {referralTransactions.length === 0 && !loadingTransactions && (
               <View style={styles.emptyCard}>
                 <View style={styles.emptyIconWrap}>
-                  <Ionicons
-                    name="receipt-outline"
-                    size={28}
-                    color="#8B95A7"
-                  />
+                  <Ionicons name="people-outline" size={28} color="#8B95A7" />
                 </View>
-                <Text style={styles.emptyTitle}>No transactions yet</Text>
+                <Text style={styles.emptyTitle}>No referral coins yet</Text>
                 <Text style={styles.emptySubtitle}>
-                  Your wallet activity will appear here.
+                  Refer friends to earn coins. Your rewards will appear here.
                 </Text>
               </View>
             )}
@@ -505,56 +270,9 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
 
-  topBar: {
-    height: 56,
-    backgroundColor: '#0A0D13',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    width: 34,
-    height: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topBarTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  topBarRightSpace: {
-    width: 34,
-  },
-
-  pageHeader: {
-    marginTop: 18,
-    marginBottom: 18,
-    paddingHorizontal: 22,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  pageTitle: {
-    color: '#FFFFFF',
-    fontSize: 21,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-  settingsButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#192235',
-    borderWidth: 1,
-    borderColor: '#22314B',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
   balanceCard: {
     marginHorizontal: 22,
+    marginTop: 18,
     borderRadius: 24,
     paddingHorizontal: 24,
     paddingTop: 24,
@@ -639,8 +357,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
-
-
   sectionWrap: {
     marginTop: 34,
   },
@@ -654,98 +370,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '800',
-  },
-  sectionLink: {
-    color: '#60A5FA',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  packsRow: {
-    paddingLeft: 22,
-    paddingRight: 10,
-  },
-  packCard: {
-    width: 176,
-    minHeight: 240,
-    marginRight: 12,
-    backgroundColor: '#0F1625',
-    borderRadius: 20,
-    borderWidth: 1.4,
-    borderColor: '#56A0FF',
-    paddingHorizontal: 16,
-    paddingTop: 18,
-    paddingBottom: 14,
-    overflow: 'visible',
-  },
-  packOfferWrap: {
-    position: 'absolute',
-    top: -1,
-    left: 14,
-    zIndex: 2,
-  },
-  packOfferBadge: {
-    backgroundColor: '#5EA2FF',
-    borderBottomLeftRadius: 10,
-    borderBottomRightRadius: 10,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  packOfferText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  packCoins: {
-    marginTop: 14,
-    color: '#FFFFFF',
-    fontSize: 30,
-    fontWeight: '900',
-    letterSpacing: -0.8,
-  },
-  packCoinsLabel: {
-    color: '#9AA7BC',
-    fontSize: 13,
-    marginTop: 2,
-  },
-  bonusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 10,
-  },
-  bonusText: {
-    marginLeft: 4,
-    color: '#60A5FA',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  packName: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  packPrice: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '900',
-    marginTop: 12,
-    marginBottom: 16,
-  },
-  purchaseButton: {
-    marginTop: 'auto',
-    borderRadius: 14,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  purchaseButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
     fontWeight: '800',
   },
 

@@ -1,14 +1,27 @@
 import React from 'react';
 import { Stack } from 'expo-router';
 import { Provider } from 'react-redux';
-import { store } from '../src/store/store';
-import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import { PersistGate } from 'redux-persist/integration/react';
+import { store, persistor } from '../src/store/store';
+import {
+  useFonts,
+  Poppins_400Regular,
+  Poppins_500Medium,
+  Poppins_600SemiBold,
+  Poppins_700Bold,
+  Poppins_800ExtraBold,
+} from '@expo-google-fonts/poppins';
 import { LoadingScreen } from '../src/components/layout/LoadingScreen';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AudioPlayerProvider } from '../src/context/AudioPlayerContext';
 
 function AppStack() {
   const { colors } = useTheme();
   return (
+     <SafeAreaProvider>
+
+    
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: colors.background },
@@ -30,6 +43,8 @@ function AppStack() {
       <Stack.Screen name="player/[id]" options={{ title: 'Player', headerShown: false }} />
       <Stack.Screen name="wallet" options={{ title: 'Wallet', headerBackTitle: 'Back' }} />
       <Stack.Screen name="subscription" options={{ title: 'Subscription', headerBackTitle: 'Back' }} />
+      <Stack.Screen name="payment-success" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="payment-failure" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="profile/edit" options={{ title: 'Edit Profile', headerBackTitle: 'Back' }} />
       <Stack.Screen name="profile/notifications" options={{ title: 'Notifications', headerBackTitle: 'Back' }} />
       <Stack.Screen name="profile/theme" options={{ title: 'Theme', headerBackTitle: 'Back' }} />
@@ -38,15 +53,20 @@ function AppStack() {
       <Stack.Screen name="profile/terms" options={{ title: 'Terms of Service', headerBackTitle: 'Back' }} />
       <Stack.Screen name="profile/privacy" options={{ title: 'Privacy Policy', headerBackTitle: 'Back' }} />
       <Stack.Screen name="profile/about" options={{ title: 'About', headerBackTitle: 'Back' }} />
+      <Stack.Screen name="profile/referral" options={{ title: 'Refer & Earn', headerBackTitle: 'Back' }} />
+      <Stack.Screen name="profile/change-password" options={{ title: 'Change Password', headerBackTitle: 'Back' }} />
     </Stack>
+     </SafeAreaProvider>
   );
 }
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    Inter_400Regular,
-    Inter_600SemiBold,
-    Inter_700Bold,
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+    Poppins_800ExtraBold,
   });
 
   if (!fontsLoaded) {
@@ -55,9 +75,13 @@ export default function RootLayout() {
 
   return (
     <Provider store={store}>
-      <ThemeProvider>
-        <AppStack />
-      </ThemeProvider>
+      <PersistGate loading={<LoadingScreen />} persistor={persistor}>
+        <ThemeProvider>
+          <AudioPlayerProvider>
+            <AppStack />
+          </AudioPlayerProvider>
+        </ThemeProvider>
+      </PersistGate>
     </Provider>
   );
 }

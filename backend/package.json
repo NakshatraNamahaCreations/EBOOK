@@ -1,7 +1,7 @@
 {
-  "name": "bookvault-backend",
+  "name": "saliljaveri-backend",
   "version": "1.0.0",
-  "description": "BookVault - Digital Reading & Media Platform API",
+  "description": "Salil javeri - Digital Reading & Media Platform API",
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
@@ -10,7 +10,7 @@
     "test": "jest --coverage"
   },
   "keywords": [
-    "bookvault",
+    "saliljaveri",
     "ebooks",
     "podcast",
     "streaming"

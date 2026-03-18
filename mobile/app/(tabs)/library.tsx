@@ -12,15 +12,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { typography } from '../../src/theme/typography';
 import { spacing } from '../../src/theme/spacing';
-import { useAppDispatch } from '../../src/hooks/useAppDispatch';
-import { useAppSelector } from '../../src/hooks/useAppSelector';
-import { fetchProgress } from '../../src/store/slices/contentSlice';
 import { ContentCard } from '../../src/components/cards/ContentCard';
 import { contentService } from '../../src/services/content.service';
+import { paymentService } from '../../src/services/payment.service';
 import { Content, ContentType } from '../../src/types';
 import { useTheme } from '../../src/theme/ThemeContext';
+import { useAppSelector } from '../../src/hooks/useAppSelector';
 
-type Tab = 'library' | 'wishlist' | 'inProgress';
+type Tab = 'purchased' | 'wishlist';
 
 const PAGE_SIZE = 20;
 
@@ -42,41 +41,27 @@ const emptyState = (): PaginatedState => ({
 
 export default function LibraryScreen() {
   const router = useRouter();
-  const dispatch = useAppDispatch();
   const { colors } = useTheme();
-  const { progress } = useAppSelector((state) => state.content);
   const { user } = useAppSelector((state) => state.auth);
 
-  const [activeTab, setActiveTab] = useState<Tab>('library');
+  const [activeTab, setActiveTab] = useState<Tab>('purchased');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [libraryState, setLibraryState] = useState<PaginatedState>(emptyState());
+  const [purchasedItems, setPurchasedItems] = useState<Content[]>([]);
+  const [purchasedLoading, setPurchasedLoading] = useState(false);
   const [wishlistState, setWishlistState] = useState<PaginatedState>(emptyState());
-  const [inProgressItems, setInProgressItems] = useState<Content[]>([]);
-  const [inProgressLoading, setInProgressLoading] = useState(false);
 
-  const fetchLibraryPage = useCallback(
-    async (page: number, append = false) => {
-      if (!user?.id) return;
-      setLibraryState((prev) => ({
-        ...prev,
-        loading: page === 1 && !append,
-        loadingMore: page > 1,
-      }));
-      try {
-        const result = await contentService.getUserLibrary(user.id, page, PAGE_SIZE);
-        setLibraryState((prev) => ({
-          items: append ? [...prev.items, ...result.data] : result.data,
-          page,
-          hasMore: result.pagination ? page < result.pagination.pages : false,
-          loading: false,
-          loadingMore: false,
-        }));
-      } catch {
-        setLibraryState((prev) => ({ ...prev, loading: false, loadingMore: false }));
-      }
-    },
-    [user?.id]
-  );
+  const fetchPurchased = useCallback(async () => {
+    if (!user?.id) return;
+    setPurchasedLoading(true);
+    try {
+      const data = await paymentService.getMyPurchases();
+      setPurchasedItems(Array.isArray(data) ? data : []);
+    } catch {
+      setPurchasedItems([]);
+    } finally {
+      setPurchasedLoading(false);
+    }
+  }, [user?.id]);
 
   const fetchWishlistPage = useCallback(
     async (page: number, append = false) => {
@@ -102,63 +87,28 @@ export default function LibraryScreen() {
     [user?.id]
   );
 
-  const fetchInProgress = useCallback(async () => {
-    if (!user?.id) return;
-    setInProgressLoading(true);
-    try {
-      const libResult = await contentService.getUserLibrary(user.id, 1, 100);
-      const inProgressIds = progress
-        .filter((p) => !p.completed && p.total_progress > 0)
-        .map((p) => p.content_id);
-      setInProgressItems(libResult.data.filter((c) => inProgressIds.includes(c.id)));
-    } catch {
-      setInProgressItems([]);
-    } finally {
-      setInProgressLoading(false);
-    }
-  }, [user?.id, progress]);
-
   useEffect(() => {
     if (!user?.id) return;
-    fetchLibraryPage(1);
+    fetchPurchased();
     fetchWishlistPage(1);
-    dispatch(fetchProgress(user.id));
   }, [user?.id]);
-
-  useEffect(() => {
-    if (activeTab === 'inProgress' && user?.id) {
-      fetchInProgress();
-    }
-  }, [activeTab, progress, user?.id]);
 
   const handleRefresh = async () => {
     if (!user?.id) return;
     setIsRefreshing(true);
     try {
-      await Promise.all([
-        fetchLibraryPage(1),
-        fetchWishlistPage(1),
-        dispatch(fetchProgress(user.id)),
-      ]);
-      if (activeTab === 'inProgress') await fetchInProgress();
+      await Promise.all([fetchPurchased(), fetchWishlistPage(1)]);
     } finally {
       setIsRefreshing(false);
     }
   };
 
-  const handleLoadMoreLibrary = () => {
-    if (!libraryState.hasMore || libraryState.loadingMore) return;
-    fetchLibraryPage(libraryState.page + 1, true);
-  };
-
-  const handleLoadMoreWishlist = () => {
-    if (!wishlistState.hasMore || wishlistState.loadingMore) return;
-    fetchWishlistPage(wishlistState.page + 1, true);
-  };
-
   const handleContentPress = (content: Content) => {
-    if (content.content_type === ContentType.BOOK) router.push(`/book/${content.id}`);
-    else if (content.content_type === ContentType.AUDIOBOOK) router.push(`/audiobook/${content.id}`);
+    const isAudiobook =
+      content.content_type === ContentType.AUDIOBOOK ||
+      (content as any).book_content_type === 'audiobook';
+    if (isAudiobook) router.push(`/audiobook/${content.id}`);
+    else if (content.content_type === ContentType.BOOK) router.push(`/book/${content.id}`);
     else if (content.content_type === ContentType.PODCAST) router.push(`/podcast/${content.id}`);
   };
 
@@ -188,7 +138,6 @@ export default function LibraryScreen() {
     emptyIcon: { fontSize: 64, marginBottom: spacing.lg },
     emptyText: { ...typography.h3, color: colors.text, marginBottom: spacing.sm },
     emptySubtext: { ...typography.body, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: spacing.xl },
-    footerLoader: { marginVertical: spacing.lg },
     footerWrap: { alignItems: 'center', paddingVertical: spacing.md },
     paginationInfo: { ...typography.caption, color: colors.textMuted },
   }), [colors]);
@@ -206,60 +155,35 @@ export default function LibraryScreen() {
 
   const renderEmpty = (tab: Tab) => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyIcon}>
-        {tab === 'library' ? '📚' : tab === 'wishlist' ? '❤️' : '📝'}
-      </Text>
+      <Text style={styles.emptyIcon}>{tab === 'purchased' ? '🛒' : '❤️'}</Text>
       <Text style={styles.emptyText}>
-        {tab === 'library' ? 'Your library is empty' : tab === 'wishlist' ? 'Your wishlist is empty' : 'No content in progress'}
+        {tab === 'purchased' ? 'No purchased books' : 'Your wishlist is empty'}
       </Text>
       <Text style={styles.emptySubtext}>
-        {tab === 'library'
-          ? 'Add books and audiobooks to your library'
-          : tab === 'wishlist'
-          ? 'Save content to read or listen later'
-          : 'Start reading or listening to track progress'}
+        {tab === 'purchased'
+          ? 'Books you buy will appear here'
+          : 'Save books to read or listen later'}
       </Text>
     </View>
   );
 
-  const renderFooter = (state: PaginatedState) => {
-    if (state.loadingMore) {
-      return <ActivityIndicator color={colors.primary} style={styles.footerLoader} />;
-    }
-    if (!state.hasMore || state.items.length === 0) return null;
-    return (
-      <View style={styles.footerWrap}>
-        <Text style={styles.paginationInfo}>Showing {state.items.length} items</Text>
-      </View>
-    );
-  };
-
-  const activeState = activeTab === 'library' ? libraryState : wishlistState;
-  const activeLoading = activeTab === 'inProgress' ? inProgressLoading : activeState.loading;
-  const activeItems =
-    activeTab === 'library' ? libraryState.items
-    : activeTab === 'wishlist' ? wishlistState.items
-    : inProgressItems;
-  const onEndReached =
-    activeTab === 'library' ? handleLoadMoreLibrary
-    : activeTab === 'wishlist' ? handleLoadMoreWishlist
+  const activeLoading = activeTab === 'purchased' ? purchasedLoading : wishlistState.loading;
+  const activeItems = activeTab === 'purchased' ? purchasedItems : wishlistState.items;
+  const onEndReached = activeTab === 'wishlist' && wishlistState.hasMore && !wishlistState.loadingMore
+    ? () => fetchWishlistPage(wishlistState.page + 1, true)
     : undefined;
-  const listFooter =
-    activeTab === 'library' ? renderFooter(libraryState)
-    : activeTab === 'wishlist' ? renderFooter(wishlistState)
-    : null;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.tabsContainer}>
-        {(['library', 'inProgress', 'wishlist'] as Tab[]).map((tab) => (
+        {(['purchased', 'wishlist'] as Tab[]).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.tab, activeTab === tab && styles.activeTab]}
             onPress={() => setActiveTab(tab)}
           >
             <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-              {tab === 'library' ? 'My Library' : tab === 'inProgress' ? 'In Progress' : 'Wishlist'}
+              {tab === 'purchased' ? 'Purchased' : 'Wishlist'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -278,7 +202,11 @@ export default function LibraryScreen() {
           contentContainerStyle={styles.listContent}
           columnWrapperStyle={styles.columnWrapper}
           ListEmptyComponent={() => renderEmpty(activeTab)}
-          ListFooterComponent={listFooter}
+          ListFooterComponent={
+            wishlistState.loadingMore ? (
+              <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.lg }} />
+            ) : null
+          }
           onEndReached={onEndReached}
           onEndReachedThreshold={0.3}
           refreshControl={

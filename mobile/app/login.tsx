@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,85 +6,251 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '../src/theme/colors';
+import { useAppDispatch } from '../src/hooks/useAppDispatch';
+import { setUser } from '../src/store/slices/authSlice';
+import { TextInput } from '../src/components/inputs/TextInput';
+import { Button } from '../src/components/buttons/Button';
+import { useTheme } from '../src/theme/ThemeContext';
+import { authService } from '../src/services/auth.service';
 import { typography } from '../src/theme/typography';
 import { spacing } from '../src/theme/spacing';
-import { Button } from '../src/components/buttons/Button';
-import { TextInput } from '../src/components/inputs/TextInput';
-import { authService } from '../src/services/auth.service';
+
+type Tab = 'login' | 'signup';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^[+]?[\d\s\-()]{10,15}$/;
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [mobileNumber, setMobileNumber] = useState('');
-  const [countryCode, setCountryCode] = useState('+1');
-  const [loading, setLoading] = useState(false);
+  const dispatch = useAppDispatch();
+  const { colors } = useTheme();
 
-  const handleSendOTP = async () => {
-    if (!mobileNumber || mobileNumber.length < 10) {
-      Alert.alert('Error', 'Please enter a valid mobile number');
-      return;
-    }
+  const [tab, setTab] = useState<Tab>('login');
+  const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  // Login fields
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+
+  // Signup fields
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
+
+  const switchTab = (t: Tab) => {
+    setTab(t);
+    setFormError('');
+  };
+
+  const handleLogin = async () => {
+    setFormError('');
+    if (!identifier.trim()) { setFormError('Email or phone number is required'); return; }
+    if (!password) { setFormError('Password is required'); return; }
 
     setLoading(true);
     try {
-      console.log('Sending OTP to:', mobileNumber, countryCode);
-      const response = await authService.sendOTP(mobileNumber, countryCode);
-      console.log('OTP sent successfully:', response);
-      
-      Alert.alert('Success', `OTP sent to ${countryCode} ${mobileNumber}. Use OTP: ${response.otp || '123456'}`);
-      
-      router.push({
-        pathname: '/verify-otp',
-        params: { mobileNumber, countryCode, otp: response.otp || '' },
-      });
-    } catch (error: any) {
-      console.error('Send OTP error:', error);
-      const errorMessage = error.response?.data?.detail || error.message || 'Failed to send OTP. Please check your connection.';
-      Alert.alert('Error', errorMessage);
+      const result = await authService.login(identifier.trim(), password);
+      dispatch(setUser(result.user));
+      router.replace('/(tabs)/home');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Invalid credentials';
+      setFormError(msg);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSignup = async () => {
+    setFormError('');
+
+    if (!name.trim()) { setFormError('Full name is required'); return; }
+    if (!phone.trim()) { setFormError('Phone number is required'); return; }
+    if (!PHONE_REGEX.test(phone.trim())) { setFormError('Please enter a valid phone number (10-15 digits)'); return; }
+    if (!email.trim()) { setFormError('Email address is required'); return; }
+    if (!EMAIL_REGEX.test(email.trim())) { setFormError('Please enter a valid email address'); return; }
+    if (!signupPassword) { setFormError('Password is required'); return; }
+    if (signupPassword.length < 6) { setFormError('Password must be at least 6 characters'); return; }
+    if (!confirmPassword) { setFormError('Please confirm your password'); return; }
+    if (signupPassword !== confirmPassword) { setFormError('Passwords do not match'); return; }
+
+    setLoading(true);
+    try {
+      const result = await authService.register(
+        name.trim(),
+        phone.trim(),
+        email.trim().toLowerCase(),
+        signupPassword,
+        referralCode.trim() || undefined,
+      );
+      dispatch(setUser(result.user));
+      router.replace('/(tabs)/home');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Registration failed';
+      setFormError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    scrollContent: { flexGrow: 1, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+    header: { alignItems: 'center', marginTop: spacing.xxl, marginBottom: spacing.xl },
+    icon: { fontSize: 56, marginBottom: spacing.md },
+    title: { ...typography.h1, color: colors.text, marginBottom: spacing.xs },
+    subtitle: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    tabRow: {
+      flexDirection: 'row',
+      backgroundColor: colors.backgroundCard,
+      borderRadius: 14,
+      padding: 4,
+      marginBottom: spacing.lg,
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: spacing.sm,
+      alignItems: 'center',
+      borderRadius: 10,
+    },
+    activeTab: { backgroundColor: colors.primary },
+    tabText: { ...typography.bodySmall, color: colors.textSecondary, fontWeight: '600' as const },
+    activeTabText: { color: '#fff' },
+    form: { gap: spacing.xs },
+    errorBox: {
+      backgroundColor: 'rgba(239,68,68,0.12)',
+      borderRadius: 10,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      marginBottom: spacing.md,
+      borderWidth: 1,
+      borderColor: 'rgba(239,68,68,0.3)',
+    },
+    errorText: { ...typography.bodySmall, color: '#EF4444', textAlign: 'center' },
+    terms: { ...typography.caption, color: colors.textMuted, textAlign: 'center', marginTop: spacing.lg },
+  }), [colors]);
+
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <Text style={styles.icon}>📱</Text>
-            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.icon}>📚</Text>
+            <Text style={styles.title}>{tab === 'login' ? 'Welcome Back' : 'Create Account'}</Text>
             <Text style={styles.subtitle}>
-              Enter your mobile number to get started
+              {tab === 'login' ? 'Sign in to continue reading' : 'Join us and start exploring'}
             </Text>
           </View>
 
-          <View style={styles.form}>
-            <TextInput
-            
-              value={mobileNumber}
-              onChangeText={setMobileNumber}
-              placeholder="Enter 10-digit mobile number"
-              keyboardType="phone-pad"
-              maxLength={15}
-            />
-
-            <Button
-              title="Send OTP"
-              onPress={handleSendOTP}
-              loading={loading}
-              fullWidth
-            />
+          {/* Tab switcher */}
+          <View style={styles.tabRow}>
+            <TouchableOpacity style={[styles.tab, tab === 'login' && styles.activeTab]} onPress={() => switchTab('login')}>
+              <Text style={[styles.tabText, tab === 'login' && styles.activeTabText]}>Login</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.tab, tab === 'signup' && styles.activeTab]} onPress={() => switchTab('signup')}>
+              <Text style={[styles.tabText, tab === 'signup' && styles.activeTabText]}>Sign Up</Text>
+            </TouchableOpacity>
           </View>
+
+          {/* Inline error */}
+          {!!formError && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{formError}</Text>
+            </View>
+          )}
+
+          {tab === 'login' ? (
+            <View style={styles.form}>
+              <TextInput
+                label="Email or Phone Number *"
+                value={identifier}
+                onChangeText={(v) => { setIdentifier(v); setFormError(''); }}
+                placeholder="Enter email or phone"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <TextInput
+                label="Password *"
+                value={password}
+                onChangeText={(v) => { setPassword(v); setFormError(''); }}
+                placeholder="Enter password"
+                secureTextEntry
+              />
+              <Button
+                title="Login"
+                onPress={handleLogin}
+                loading={loading}
+                fullWidth
+                style={{ marginTop: spacing.sm }}
+              />
+            </View>
+          ) : (
+            <View style={styles.form}>
+              <TextInput
+                label="Full Name *"
+                value={name}
+                onChangeText={(v) => { setName(v); setFormError(''); }}
+                placeholder="Enter your full name"
+                autoCapitalize="words"
+              />
+              <TextInput
+                label="Phone Number *"
+                value={phone}
+                onChangeText={(v) => { setPhone(v); setFormError(''); }}
+                placeholder="10-digit mobile number"
+                keyboardType="phone-pad"
+                maxLength={15}
+              />
+              <TextInput
+                label="Email Address *"
+                value={email}
+                onChangeText={(v) => { setEmail(v); setFormError(''); }}
+                placeholder="example@email.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <TextInput
+                label="Password *"
+                value={signupPassword}
+                onChangeText={(v) => { setSignupPassword(v); setFormError(''); }}
+                placeholder="Minimum 6 characters"
+                secureTextEntry
+              />
+              <TextInput
+                label="Confirm Password *"
+                value={confirmPassword}
+                onChangeText={(v) => { setConfirmPassword(v); setFormError(''); }}
+                placeholder="Re-enter your password"
+                secureTextEntry
+              />
+              <TextInput
+                label="Referral Code (optional)"
+                value={referralCode}
+                onChangeText={(v) => setReferralCode(v.toUpperCase())}
+                placeholder="Enter invite code"
+                autoCapitalize="characters"
+                maxLength={8}
+              />
+              <Button
+                title="Create Account"
+                onPress={handleSignup}
+                loading={loading}
+                fullWidth
+                style={{ marginTop: spacing.sm }}
+              />
+            </View>
+          )}
 
           <Text style={styles.terms}>
             By continuing, you agree to our Terms of Service and Privacy Policy
@@ -94,45 +260,3 @@ export default function LoginScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: spacing.lg,
-  },
-  header: {
-    alignItems: 'center',
-    marginTop: spacing.xxl,
-    marginBottom: spacing.xl,
-  },
-  icon: {
-    fontSize: 64,
-    marginBottom: spacing.lg,
-  },
-  title: {
-    ...typography.h1,
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  form: {
-    marginTop: spacing.xl,
-  },
-  terms: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.xl,
-  },
-});

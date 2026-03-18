@@ -11,7 +11,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   Wallet,
-  CreditCard,
   UserCircle,
   Bell,
   Moon,
@@ -21,7 +20,9 @@ import {
   ShieldCheck,
   Info,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  Gift,
+  Lock,
 } from 'lucide-react-native';
 import { typography } from '../../src/theme/typography';
 import { spacing } from '../../src/theme/spacing';
@@ -166,7 +167,7 @@ export default function ProfileScreen() {
             </View>
           </TouchableOpacity>
           <Text style={styles.name}>{user?.name || 'User'}</Text>
-          <Text style={styles.phone}>{user?.country_code} {user?.mobile_number}</Text>
+          <Text style={styles.phone}>{user?.email || user?.mobile_number || ''}</Text>
           {user?.is_premium && (
             <View style={styles.premiumBadge}>
               <Text style={styles.premiumText}>⭐ Premium Member</Text>
@@ -176,12 +177,13 @@ export default function ProfileScreen() {
 
         <View style={styles.section}>
           <MenuItem icon={Wallet} title="Wallet" subtitle={`${user?.coin_balance || 0} coins available`} onPress={() => router.push('/wallet')} colors={colors} styles={styles} />
-          <MenuItem icon={CreditCard} title="Subscription" subtitle={user?.is_premium ? 'Premium Active' : 'Go Premium'} onPress={() => router.push('/subscription')} colors={colors} styles={styles} />
+          <MenuItem icon={Gift} title="Refer & Earn" subtitle="Invite friends and get rewarded" onPress={() => router.push('/profile/referral')} colors={colors} styles={styles} />
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>SETTINGS</Text>
           <MenuItem icon={UserCircle} title="Edit Profile" onPress={() => router.push('/profile/edit')} colors={colors} styles={styles} />
+          <MenuItem icon={Lock} title="Change Password" onPress={() => router.push('/profile/change-password')} colors={colors} styles={styles} />
           <MenuItem icon={Bell} title="Notifications" onPress={() => router.push('/profile/notifications')} colors={colors} styles={styles} />
           <MenuItem icon={Moon} title="Theme" subtitle="Dark / Light" onPress={() => router.push('/profile/theme')} colors={colors} styles={styles} />
           <MenuItem icon={Globe} title="Language" subtitle={langLabel} onPress={() => router.push('/profile/language')} colors={colors} styles={styles} />

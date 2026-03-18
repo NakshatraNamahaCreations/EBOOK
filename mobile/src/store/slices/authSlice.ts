@@ -16,11 +16,24 @@ const initialState: AuthState = {
   error: null,
 };
 
+export const loginUser = createAsyncThunk(
+  'auth/loginUser',
+  async ({ identifier, password }: { identifier: string; password: string }) => {
+    return await authService.login(identifier, password);
+  }
+);
+
+export const registerUser = createAsyncThunk(
+  'auth/registerUser',
+  async ({ name, phone, email, password }: { name: string; phone: string; email: string; password: string }) => {
+    return await authService.register(name, phone, email, password);
+  }
+);
+
 export const verifyOTP = createAsyncThunk(
   'auth/verifyOTP',
   async ({ mobileNumber, otp, countryCode }: { mobileNumber: string; otp: string; countryCode: string }) => {
-    const response = await authService.verifyOTP(mobileNumber, otp, countryCode);
-    return response;
+    return await authService.verifyOTP(mobileNumber, otp, countryCode);
   }
 );
 
@@ -52,6 +65,35 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // loginUser
+      .addCase(loginUser.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(loginUser.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload.user;
+        state.isAuthenticated = true;
+      })
+      .addCase(loginUser.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message || 'Login failed';
+      })
+      // registerUser
+      .addCase(registerUser.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(registerUser.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload.user;
+        state.isAuthenticated = true;
+      })
+      .addCase(registerUser.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message || 'Registration failed';
+      })
+      // verifyOTP (kept for compatibility)
       .addCase(verifyOTP.pending, (state) => {
         state.isLoading = true;
         state.error = null;

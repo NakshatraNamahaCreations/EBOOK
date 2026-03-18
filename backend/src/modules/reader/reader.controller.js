@@ -10,6 +10,9 @@ const Video = require('../videos/Video.model');
 const Library = require('./Library.model');
 const Wishlist = require('./Wishlist.model');
 const ContentProgress = require('./ContentProgress.model');
+const BookPurchase = require('../payments/BookPurchase.model');
+const Review = require('../reviews/Review.model');
+const Wallet = require('../wallet/Wallet.model');
 const AppError = require('../../common/AppError');
 const { asyncHandler } = require('../../common/errorHandler');
 
@@ -23,17 +26,20 @@ const bookToContent = (book) => ({
   title: book.title,
   description: book.description || '',
   content_type: 'book',
+  book_content_type: book.contentType || 'ebook',
   cover_image: book.coverImage || '',
   author_id: book.authorId ? book.authorId._id?.toString() || book.authorId.toString() : '',
   author_name: book.authorId?.displayName || book.authorId?.name || 'Unknown',
   category_ids: book.categoryId ? [book.categoryId._id?.toString() || book.categoryId.toString()] : [],
-  language: book.language || 'en',
+  language: book.bookLanguage || book.language || 'en',
   rating: book.averageRating || 0,
   reviews_count: book.ratingCount || 0,
-  access_type: 'free',
+  access_type: book.isFree ? 'free' : 'paid',
+  price_inr: book.isFree ? 0 : (book.contentType === 'audiobook' ? (book.audiobookPrice || 0) : (book.ebookPrice || 0)),
   coin_price: 0,
   chapters: [],
-  is_trending: book.totalReads > 100,
+  is_trending: true,
+  is_purchased: false,
   is_featured: book.isFeatured || false,
   is_new_release: book.publishedAt ? Date.now() - new Date(book.publishedAt).getTime() < 30 * 24 * 60 * 60 * 1000 : false,
   created_at: book.createdAt ? book.createdAt.toISOString() : new Date().toISOString(),
@@ -79,8 +85,9 @@ const videoToContent = (video) => ({
   language: 'en',
   rating: 0,
   reviews_count: 0,
-  access_type: video.isFree ? 'free' : 'coins',
-  coin_price: video.coinCost || 0,
+  access_type: video.isFree ? 'free' : 'paid',
+  coin_price: 0,
+  price_inr: video.isFree ? 0 : (video.price || video.coinCost || 0),
   chapters: [],
   is_trending: video.viewCount > 100,
   is_featured: false,
@@ -92,7 +99,7 @@ const videoToContent = (video) => ({
  * Transform a Book + aggregate audiobook stats to mobile Content format (audiobook type)
  * book: populated Book doc; totalListens: sum of listenCounts; isFree/coinCost from first track
  */
-const audiobookToContent = (book, { totalListens = 0, isFree = true, coinCost = 0 } = {}) => ({
+const audiobookToContent = (book, { totalListens = 0, isFree = true, price = 0 } = {}) => ({
   id: book._id.toString(),
   title: book.title,
   description: book.description || '',
@@ -101,13 +108,14 @@ const audiobookToContent = (book, { totalListens = 0, isFree = true, coinCost = 
   author_id: book.authorId ? book.authorId._id?.toString() || book.authorId.toString() : '',
   author_name: book.authorId?.displayName || book.authorId?.name || 'Unknown',
   category_ids: book.categoryId ? [book.categoryId._id?.toString() || book.categoryId.toString()] : [],
-  language: book.language || 'en',
+  language: book.bookLanguage || book.language || 'en',
   rating: book.averageRating || 0,
   reviews_count: book.ratingCount || 0,
-  access_type: isFree ? 'free' : 'coins',
-  coin_price: coinCost,
+  access_type: isFree ? 'free' : 'paid',
+  coin_price: 0,
+  price_inr: isFree ? 0 : price,
   chapters: [],
-  is_trending: totalListens > 300,
+  is_trending: true,
   is_featured: book.isFeatured || false,
   is_new_release: book.publishedAt ? Date.now() - new Date(book.publishedAt).getTime() < 30 * 24 * 60 * 60 * 1000 : false,
   created_at: book.createdAt ? book.createdAt.toISOString() : new Date().toISOString(),
@@ -122,14 +130,20 @@ const audiobookToContent = (book, { totalListens = 0, isFree = true, coinCost = 
 const getProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.userId).lean();
   if (!user) throw AppError.notFound('User not found');
+  const wallet = await Wallet.findOne({ userId: user._id }).lean();
   res.json({
     success: true,
     data: {
       id: user._id.toString(),
       name: user.name,
       email: user.email,
-      phone: user.phone || '',
+      mobile_number: user.phone || '',
+      country_code: '',
       profile_image: user.profileImage || '',
+      coin_balance: wallet ? wallet.availableCoins : 0,
+      is_premium: user.isPremium || false,
+      referral_code: user.referralCode || '',
+      created_at: user.createdAt ? new Date(user.createdAt).toISOString() : new Date().toISOString(),
       preferences: user.preferences || {},
     },
   });
@@ -271,9 +285,10 @@ const getContent = asyncHandler(async (req, res) => {
   const lim = Math.min(parseInt(limit) || 20, 100);
   const results = [];
 
-  // Books
+  console.log("content_type",content_type)
+  // Books (ebooks only — also include legacy docs where contentType is not set)
   if (!content_type || content_type === 'book') {
-    const bookQuery = { status: 'published' };
+    const bookQuery = { status: 'published', contentType: { $in: ['ebook', null] } };
     if (is_featured === 'true') bookQuery.isFeatured = true;
     if (category_id) bookQuery.categoryId = category_id;
 
@@ -289,31 +304,25 @@ const getContent = asyncHandler(async (req, res) => {
     results.push(...bookResults);
   }
 
-  // Audiobooks — query Audiobook tracks, group by bookId, return unique books as audiobook content
+  // Audiobooks — query Book directly with contentType: 'audiobook'
   if (!content_type || content_type === 'audiobook') {
-    const abTracks = await Audiobook.find({ status: 'published' })
-      .populate({ path: 'bookId', populate: { path: 'authorId', select: 'displayName name' } })
+    const audiobookQuery = { status: 'published', contentType: 'audiobook' };
+    if (is_featured === 'true') audiobookQuery.isFeatured = true;
+    if (category_id) audiobookQuery.categoryId = category_id;
+
+    const audiobooks = await Book.find(audiobookQuery)
+      .populate('authorId', 'displayName name')
+      .sort({ totalReads: -1, createdAt: -1 })
+      .limit(lim)
       .lean();
 
-    // Aggregate per book
-    const bookMap = new Map();
-    for (const ab of abTracks) {
-      const book = ab.bookId;
-      if (!book || book.status === 'archived') continue;
-      if (category_id && (!book.categoryId || book.categoryId.toString() !== category_id)) continue;
-      const key = book._id.toString();
-      if (!bookMap.has(key)) {
-        bookMap.set(key, { book, totalListens: 0, isFree: ab.isFree, coinCost: ab.coinCost });
-      }
-      bookMap.get(key).totalListens += ab.listenCount || 0;
-    }
-
-    let abResults = Array.from(bookMap.values())
-      .sort((a, b) => b.totalListens - a.totalListens)
-      .slice(0, lim)
-      .map(({ book, totalListens, isFree, coinCost }) =>
-        audiobookToContent(book, { totalListens, isFree, coinCost })
-      );
+    let abResults = audiobooks.map((book) =>
+      audiobookToContent(book, {
+        totalListens: 0,
+        isFree: book.isFree,
+        price: book.audiobookPrice || 0,
+      })
+    );
 
     if (is_trending === 'true') abResults = abResults.filter((a) => a.is_trending);
     if (is_featured === 'true') abResults = abResults.filter((a) => a.is_featured);
@@ -373,29 +382,56 @@ const getContentById = asyncHandler(async (req, res) => {
     .catch(() => null);
 
   if (book) {
-    const [chapters, audioTracks] = await Promise.all([
-      Chapter.find({ bookId: id, status: 'published' }).sort({ orderNumber: 1 }).lean(),
-      Audiobook.find({ bookId: id, status: 'published' }).lean(),
-    ]);
-
-    // Map chapterId → audioUrl for quick lookup
-    const audioUrlMap = {};
-    audioTracks.forEach(track => {
-      if (track.chapterId) {
-        audioUrlMap[track.chapterId.toString()] = track.audioUrl || '';
-      }
-    });
-
     const content = bookToContent(book);
-    content.chapters = chapters.map(ch => ({
-      id: ch._id.toString(),
-      title: ch.title,
-      order: ch.orderNumber,
-      is_free: ch.isFree,
-      coin_cost: ch.coinCost,
-      estimated_read_time: ch.estimatedReadTime || 0,
-      audio_url: audioUrlMap[ch._id.toString()] || '',
-    }));
+
+    if (book.contentType === 'audiobook') {
+      // Audiobook: chapters come from the Audiobook tracks collection
+      const audioTracks = await Audiobook.find({ bookId: id, status: 'published' })
+        .sort({ orderNumber: 1 })
+        .lean();
+      content.chapters = audioTracks.map(track => ({
+        id: track._id.toString(),
+        title: track.title,
+        order: track.orderNumber,
+        duration: track.duration || 0,
+        audio_url: track.audioUrl || '',
+        narrator: track.narrator || '',
+        is_free: false,
+        coin_cost: 0,
+      }));
+    } else {
+      // Ebook: chapters from Chapter collection, optionally with audio URLs
+      const [chapters, audioTracks] = await Promise.all([
+        Chapter.find({ bookId: id, status: 'published' }).sort({ orderNumber: 1 }).lean(),
+        Audiobook.find({ bookId: id, status: 'published' }).lean(),
+      ]);
+
+      const audioUrlMap = {};
+      audioTracks.forEach(track => {
+        if (track.chapterId) audioUrlMap[track.chapterId.toString()] = track.audioUrl || '';
+      });
+
+      content.chapters = chapters.map(ch => ({
+        id: ch._id.toString(),
+        title: ch.title,
+        order: ch.orderNumber,
+        is_free: ch.isFree,
+        coin_cost: ch.coinCost,
+        estimated_read_time: ch.estimatedReadTime || 0,
+        audio_url: audioUrlMap[ch._id.toString()] || '',
+      }));
+    }
+
+    // If the user is authenticated, check whether they have purchased this book
+    if (req.userId) {
+      const purchase = await BookPurchase.findOne({
+        userId: req.userId,
+        bookId: id,
+        status: 'completed',
+      }).lean();
+      content.is_purchased = !!purchase;
+    }
+
     return res.json({ success: true, data: content });
   }
 
@@ -447,11 +483,13 @@ const getAudiobookById = asyncHandler(async (req, res) => {
 
   const totalDuration = tracks.reduce((sum, t) => sum + (t.duration || 0), 0);
   const narratorName = tracks.length > 0 ? tracks[0].narrator || '' : '';
-  const isFree = tracks.length > 0 ? tracks[0].isFree : true;
-  const coinCost = tracks.length > 0 ? tracks[0].coinCost || 0 : 0;
   const totalListens = tracks.reduce((sum, t) => sum + (t.listenCount || 0), 0);
 
-  const content = audiobookToContent(book, { totalListens, isFree, coinCost });
+  // Use Book-level isFree/price so it's correct even when no tracks exist yet
+  const isFree = book.isFree;
+  const price = book.audiobookPrice || 0;
+
+  const content = audiobookToContent(book, { totalListens, isFree, price });
   content.duration = totalDuration;
   content.narrator_name = narratorName;
   content.chapters = tracks.map((t, i) => ({
@@ -461,8 +499,6 @@ const getAudiobookById = asyncHandler(async (req, res) => {
     duration: t.duration,
     audio_url: t.audioUrl || '',
     narrator: t.narrator || '',
-    is_free: t.isFree,
-    coin_cost: t.coinCost,
   }));
 
   res.json({ success: true, data: content });
@@ -483,16 +519,18 @@ const enrichEntries = async (entries) => {
           .lean();
         if (doc) results.push(bookToContent(doc));
       } else if (entry.contentType === 'audiobook') {
-        // Audiobooks share the Book document; fetch audio tracks for stats
+        // Audiobooks share the Book document; price/access at book level
         const doc = await Book.findById(entry.contentId)
           .populate('authorId', 'displayName name')
           .lean();
         if (doc) {
           const tracks = await Audiobook.find({ bookId: entry.contentId, status: 'published' }).lean();
           const totalListens = tracks.reduce((sum, t) => sum + (t.listenCount || 0), 0);
-          const isFree = tracks.length > 0 ? tracks[0].isFree : true;
-          const coinCost = tracks.length > 0 ? tracks[0].coinCost || 0 : 0;
-          results.push(audiobookToContent(doc, { totalListens, isFree, coinCost }));
+          results.push(audiobookToContent(doc, {
+            totalListens,
+            isFree: doc.isFree,
+            price: doc.audiobookPrice || 0,
+          }));
         }
       } else if (entry.contentType === 'podcast') {
         const doc = await PodcastSeries.findById(entry.contentId).lean();
@@ -761,6 +799,111 @@ const getChapterUnlockStatus = asyncHandler(async (req, res) => {
   res.json({ success: true, data: result, has_active_plan: hasActivePlan });
 });
 
+/**
+ * GET /api/v1/reader/purchases
+ * Returns all books the authenticated user has purchased.
+ */
+const getMyPurchases = asyncHandler(async (req, res) => {
+  const purchases = await BookPurchase.find({
+    userId: req.userId,
+    status: 'completed',
+  })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const bookIds = purchases.map((p) => p.bookId);
+
+  const books = await Book.find({ _id: { $in: bookIds } })
+    .populate('authorId', 'displayName name')
+    .lean();
+
+  const bookMap = {};
+  books.forEach((b) => { bookMap[b._id.toString()] = b; });
+
+  const contents = purchases
+    .map((p) => {
+      const book = bookMap[p.bookId.toString()];
+      if (!book) return null;
+      const content = bookToContent(book);
+      content.is_purchased = true;
+      return content;
+    })
+    .filter(Boolean);
+
+  res.json({ success: true, data: contents });
+});
+
+/**
+ * GET /api/v1/reader/referrals
+ * Returns the user's referral code + stats + referral history
+ */
+const getMyReferrals = asyncHandler(async (req, res) => {
+  const Referral = require('../referrals/Referral.model');
+  const userId = req.userId;
+
+  // Read the persisted referral code from the user document
+  const userDoc = await User.findById(userId).select('referralCode').lean();
+  const referralCode = userDoc?.referralCode || '';
+
+  const referrals = await Referral.find({ referrerId: userId })
+    .populate('refereeId', 'name email')
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const stats = {
+    total: referrals.length,
+    successful: referrals.filter((r) => r.status === 'completed').length,
+    pending: referrals.filter((r) => r.status === 'pending').length,
+    totalRewards: referrals.filter((r) => r.rewardGiven).reduce((sum, r) => sum + (r.rewardAmount || 0), 0),
+  };
+
+  res.json({ success: true, data: { referralCode, referrals, stats } });
+});
+
+/**
+ * GET /api/v1/reader/books/:bookId/review
+ * Returns the authenticated user's review for a book (null if none).
+ */
+const getMyBookReview = asyncHandler(async (req, res) => {
+  const review = await Review.findOne({
+    userId: req.userId,
+    contentType: 'book',
+    contentId: req.params.bookId,
+  }).lean();
+  res.json({ success: true, data: review || null });
+});
+
+/**
+ * POST /api/v1/reader/books/:bookId/review
+ * Submit a review — only allowed after purchase; one per user per book.
+ */
+const submitBookReview = asyncHandler(async (req, res) => {
+  const { bookId } = req.params;
+  const { rating = 5, body = '' } = req.body;
+
+  const purchase = await BookPurchase.findOne({ userId: req.userId, bookId, status: 'completed' });
+  if (!purchase) throw AppError.forbidden('Purchase this book to leave a review');
+
+  const existing = await Review.findOne({ userId: req.userId, contentType: 'book', contentId: bookId });
+  if (existing) throw AppError.conflict('You have already reviewed this book');
+
+  const review = await Review.create({
+    userId: req.userId,
+    contentType: 'book',
+    contentId: bookId,
+    rating: Math.min(5, Math.max(1, Number(rating) || 5)),
+    body: String(body).trim(),
+    status: 'approved',
+  });
+
+  // Update book average rating
+  const all = await Review.find({ contentType: 'book', contentId: bookId, status: 'approved' }).lean();
+  const avg = all.reduce((s, r) => s + r.rating, 0) / all.length;
+  await Book.findByIdAndUpdate(bookId, { averageRating: +avg.toFixed(1), ratingCount: all.length });
+
+  res.json({ success: true, data: review });
+});
+
 module.exports = {
   getProfile,
   updateProfile,
@@ -781,4 +924,8 @@ module.exports = {
   getProgressByContent,
   saveProgress,
   getChapterUnlockStatus,
+  getMyPurchases,
+  getMyReferrals,
+  getMyBookReview,
+  submitBookReview,
 };

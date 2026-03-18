@@ -15,7 +15,7 @@ export const AuthLayout = () => {
                style={{ width: 56, height: 56, borderRadius: 'var(--radius-xl)', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', marginBottom: 16, boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
             <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff' }}>BV</span>
           </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>BookVault Admin</h1>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Salil javeri Admin</h1>
           <p style={{ color: 'var(--text-muted)', marginTop: 6, fontSize: '0.875rem' }}>Sign in to manage the platform</p>
         </div>
         <Outlet />

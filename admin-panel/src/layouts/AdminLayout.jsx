@@ -1,9 +1,9 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, PenTool, BookOpen, Headphones, Radio, Video,
-  Image as ImageIcon, Wallet, CreditCard, Bell, MessageSquare, CalendarDays,
-  Tags, Settings, LogOut, Menu, X, ChevronRight, Sun, Moon
+  LayoutDashboard, Users, PenTool, BookOpen, Radio,
+  Image as ImageIcon, CreditCard, MessageSquare, Ticket, Share2,
+  Tags, Settings, LogOut, Menu, X, ChevronRight, Sun, Moon, BookUser
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTheme } from '../context/ThemeContext';
@@ -13,37 +13,35 @@ const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   ]},
   { group: 'People', items: [
-    { name: 'Users', path: '/users', icon: Users },
+    { name: 'Readers', path: '/readers', icon: BookUser },
+    { name: 'Admins', path: '/users', icon: Users },
     { name: 'Authors', path: '/authors', icon: PenTool },
   ]},
   { group: 'Content', items: [
     { name: 'Books', path: '/books', icon: BookOpen },
-    { name: 'Audiobooks', path: '/audiobooks', icon: Headphones },
     { name: 'Podcasts', path: '/podcasts', icon: Radio },
-    { name: 'Videos', path: '/videos', icon: Video },
   ]},
   { group: 'Revenue', items: [
-    { name: 'Wallet & Coins', path: '/wallet', icon: Wallet },
     { name: 'Payments', path: '/payments', icon: CreditCard },
+    { name: 'Coupons & Discounts', path: '/coupons', icon: Ticket },
+    { name: 'Referrals', path: '/referrals', icon: Share2 },
   ]},
   { group: 'Engage', items: [
     { name: 'Banners', path: '/banners', icon: ImageIcon },
-    { name: 'Notifications', path: '/notifications', icon: Bell },
     { name: 'Reviews', path: '/reviews', icon: MessageSquare },
   ]},
   { group: 'System', items: [
-    { name: 'Releases', path: '/releases', icon: CalendarDays },
     { name: 'Categories', path: '/categories', icon: Tags },
     { name: 'Settings', path: '/settings', icon: Settings },
   ]}
 ];
 
 const pageTitles = {
-  '/dashboard': 'Dashboard', '/users': 'Users', '/authors': 'Authors',
-  '/books': 'Books', '/audiobooks': 'Audiobooks', '/podcasts': 'Podcasts',
-  '/videos': 'Videos', '/wallet': 'Wallet & Coins', '/payments': 'Payments',
-  '/banners': 'Banners', '/notifications': 'Notifications', '/reviews': 'Reviews',
-  '/releases': 'Release Planner', '/categories': 'Categories & Tags', '/settings': 'Settings',
+  '/dashboard': 'Dashboard', '/readers': 'Readers', '/users': 'Admins', '/authors': 'Authors',
+  '/books': 'Books', '/podcasts': 'Podcasts',
+  '/payments': 'Payments', '/coupons': 'Coupons & Discounts', '/referrals': 'Referrals',
+  '/banners': 'Banners', '/reviews': 'Reviews',
+  '/categories': 'Categories & Tags', '/settings': 'Settings',
 };
 
 export const AdminLayout = () => {
@@ -51,7 +49,7 @@ export const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isDark, toggleTheme } = useTheme();
-  const pageTitle = pageTitles[location.pathname] || 'BookVault';
+  const pageTitle = pageTitles[location.pathname] || 'Salil javeri';
 
   const handleLogout = () => {
     localStorage.removeItem('bv_admin_token');
@@ -74,7 +72,7 @@ export const AdminLayout = () => {
                  style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
               BV
             </div>
-            <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>BookVault</span>
+            <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Salil javeri</span>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1 rounded" style={{ color: 'var(--text-muted)' }}>
             <X className="w-5 h-5" />
@@ -166,12 +164,6 @@ export const AdminLayout = () => {
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               {isDark ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
-            </button>
-            <button className="relative p-2 rounded-lg transition-colors" style={{ color: 'var(--text-muted)' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-              <Bell className="w-[18px] h-[18px]" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: 'var(--danger)' }}></span>
             </button>
             <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
               style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>A</div>

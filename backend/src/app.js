@@ -30,6 +30,8 @@ const adminCoinPackRoutes = require('./modules/wallet/admin.coinpacks.routes');
 const adminDashboardRoutes = require('./modules/analytics/admin.dashboard.routes');
 const adminAudiobookRoutes = require('./modules/audiobooks/audiobook.routes');
 const adminPaymentRoutes = require('./modules/payments/admin.payments.routes');
+const adminCouponRoutes = require('./modules/coupons/coupon.routes');
+const adminReferralRoutes = require('./modules/referrals/referral.routes');
 const readerRoutes = require('./modules/reader/reader.routes');
 
 const app = express();
@@ -92,7 +94,7 @@ if (config.env === 'development') {
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
-    message: 'BookVault API is running',
+    message: 'Salil javeri API is running',
     environment: config.env,
     timestamp: new Date().toISOString(),
   });
@@ -120,6 +122,8 @@ app.use('/api/v1/admin/notifications', adminNotificationRoutes);
 app.use('/api/v1/admin/dashboard', adminDashboardRoutes);
 app.use('/api/v1/admin/audiobooks', adminAudiobookRoutes);
 app.use('/api/v1/admin/payments', adminPaymentRoutes);
+app.use('/api/v1/admin/coupons', adminCouponRoutes);
+app.use('/api/v1/admin/referrals', adminReferralRoutes);
 
 // Author Routes
 app.use('/api/v1/author/books', authorBookRoutes);
@@ -147,7 +151,7 @@ const startServer = async () => {
   try {
     await connectDB();
     app.listen(config.port, () => {
-      logger.info(`🚀 BookVault API running on port ${config.port} [${config.env}]`);
+      logger.info(`🚀 Salil javeri API running on port ${config.port} [${config.env}]`);
     });
   } catch (error) {
     logger.error('Failed to start server:', error);

@@ -3,7 +3,7 @@ import { storage } from '../utils/storage';
 
 // Get backend URL — validate it's a proper absolute URL
 const rawUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-const BACKEND_URL = rawUrl.startsWith('http') ? rawUrl : 'http://localhost:5001';
+const BACKEND_URL = rawUrl.startsWith('http') ? rawUrl : 'http://192.168.1.70:5001';
 
 console.log('API Base URL:', BACKEND_URL);
 
@@ -38,7 +38,7 @@ api.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error) => {
     console.error('API Error:', {
       url: error.config?.url,
       method: error.config?.method,
@@ -48,25 +48,26 @@ api.interceptors.response.use(
     });
 
     if (error.response?.status === 401) {
-      console.log('401 Unauthorized detected. Clearing session.');
-      
-      // Clear storage
-      storage.removeItem('auth_token').then(() => {
-        storage.removeItem('user_id').then(() => {
-          storage.removeItem('login_time').then(() => {
-            // Import store dynamically to avoid circular dependency
-            try {
-              const { store, resetStore } = require('../store/store');
-              store.dispatch(resetStore());
-              
-              const { router } = require('expo-router');
-              router.replace('/splash');
-            } catch (e) {
-              console.log('Error during 401 logout:', e);
-            }
-          });
-        });
-      });
+      // Only force logout when the request had a token that turned out invalid/expired
+      const code = error.response?.data?.code || '';
+      const hadToken = !!error.config?.headers?.Authorization;
+      const isTokenError =
+        hadToken && (code === 'TOKEN_EXPIRED' || code === 'INVALID_TOKEN' || !code);
+
+      if (isTokenError) {
+        console.log('Token expired/invalid — clearing session.');
+        try {
+          await storage.removeItem('auth_token');
+          await storage.removeItem('user_id');
+          await storage.removeItem('login_time');
+          const { store, resetStore } = require('../store/store');
+          store.dispatch(resetStore());
+          const { router } = require('expo-router');
+          router.replace('/splash');
+        } catch (e) {
+          console.log('Error during 401 logout:', e);
+        }
+      }
     }
     return Promise.reject(error);
   }

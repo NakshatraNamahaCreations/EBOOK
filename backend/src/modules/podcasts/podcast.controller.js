@@ -5,7 +5,9 @@ const { success, created, paginated } = require('../../common/response');
 // ─── Series Controllers ──────────────────────────────────
 
 const createSeries = asyncHandler(async (req, res) => {
-  const series = await podcastService.createSeries(req.body, req.body.authorId);
+  const data = { ...req.body };
+  if (req.file?.location) data.thumbnail = req.file.location;
+  const series = await podcastService.createSeries(data, data.authorId);
   created(res, series, 'Podcast series created');
 });
 
@@ -20,7 +22,9 @@ const getSeries = asyncHandler(async (req, res) => {
 });
 
 const updateSeries = asyncHandler(async (req, res) => {
-  const series = await podcastService.updateSeries(req.params.id, req.body);
+  const data = { ...req.body };
+  if (req.file?.location) data.thumbnail = req.file.location;
+  const series = await podcastService.updateSeries(req.params.id, data);
   success(res, series, 'Podcast series updated');
 });
 

@@ -18,7 +18,7 @@ const VideoSeries = require('../modules/videos/VideoSeries.model');
 const Audiobook = require('../modules/audiobooks/Audiobook.model');
 const Banner = require('../modules/banners/Banner.model');
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/bookvault';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/saliljaveri';
 
 // Picsum generates consistent, beautiful images from a seed word
 const img = (seed, w = 400, h = 600) =>
@@ -60,7 +60,7 @@ const seed = async () => {
     // ─── Create Super Admin ───────────────────────────────────
     const superAdmin = await User.create({
       name: 'Super Admin',
-      email: 'admin@bookvault.com',
+      email: 'admin@saliljaveri.com',
       phone: '+91-9999999991',
       phoneVerified: true,
       passwordHash: 'admin123456',
@@ -78,12 +78,12 @@ const seed = async () => {
       ],
       assignedBy: superAdmin._id,
     });
-    console.log('✅ Super Admin created: admin@bookvault.com / admin123456');
+    console.log('✅ Super Admin created: admin@saliljaveri.com / admin123456');
 
     // ─── Create Authors ───────────────────────────────────────
     const authorUser1 = await User.create({
       name: 'Salil Javeri',
-      email: 'salil@bookvault.com',
+      email: 'salil@saliljaveri.com',
       phone: '+91-9999999992',
       phoneVerified: true,
       passwordHash: 'author123456',
@@ -109,7 +109,7 @@ const seed = async () => {
 
     const authorUser2 = await User.create({
       name: 'Priya Sharma',
-      email: 'priya@bookvault.com',
+      email: 'priya@saliljaveri.com',
       phone: '+91-9999999994',
       phoneVerified: true,
       passwordHash: 'author123456',
@@ -135,7 +135,7 @@ const seed = async () => {
 
     const authorUser3 = await User.create({
       name: 'Rohan Kapoor',
-      email: 'rohan@bookvault.com',
+      email: 'rohan@saliljaveri.com',
       phone: '+91-9999999995',
       phoneVerified: true,
       passwordHash: 'author123456',
@@ -164,7 +164,7 @@ const seed = async () => {
     // ─── Sample Reader ────────────────────────────────────────
     const readerUser = await User.create({
       name: 'Test Reader',
-      email: 'reader@bookvault.com',
+      email: 'reader@saliljaveri.com',
       phone: '+91-9999999993',
       phoneVerified: true,
       passwordHash: 'reader123456',
@@ -177,7 +177,7 @@ const seed = async () => {
       availableCoins: 500,
       bonusCoins: 50,
     });
-    console.log('✅ Reader created: reader@bookvault.com / reader123456 (500 coins)');
+    console.log('✅ Reader created: reader@saliljaveri.com / reader123456 (500 coins)');
 
     // ─── Categories ───────────────────────────────────────────
     const categories = await Category.insertMany([
@@ -527,7 +527,7 @@ const seed = async () => {
         description: 'Storytelling is humanity\'s oldest and most powerful technology. Salil explores how narrative shaped civilization and why it still drives everything from politics to product design.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=arj7oStGLkU',
-        youtubeMeta: { videoId: 'arj7oStGLkU', thumbnailUrl: ytThumb('arj7oStGLkU'), channelName: 'BookVault', duration: 1980 },
+        youtubeMeta: { videoId: 'arj7oStGLkU', thumbnailUrl: ytThumb('arj7oStGLkU'), channelName: 'Salil javeri', duration: 1980 },
         thumbnail: ytThumb('arj7oStGLkU'),
         duration: 1980, isFree: true, coinCost: 0, status: 'published', publishedAt: new Date('2024-12-01'), playCount: 3240,
       },
@@ -537,7 +537,7 @@ const seed = async () => {
         description: 'How to cultivate focus in a world of infinite distractions. Frameworks for meaningful creative output in the age of social media.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=H14bBuluwB8',
-        youtubeMeta: { videoId: 'H14bBuluwB8', thumbnailUrl: ytThumb('H14bBuluwB8'), channelName: 'BookVault', duration: 2460 },
+        youtubeMeta: { videoId: 'H14bBuluwB8', thumbnailUrl: ytThumb('H14bBuluwB8'), channelName: 'Salil javeri', duration: 2460 },
         thumbnail: ytThumb('H14bBuluwB8'),
         duration: 2460, isFree: false, coinCost: 10, status: 'published', publishedAt: new Date('2024-12-08'), playCount: 2180,
       },
@@ -547,7 +547,7 @@ const seed = async () => {
         description: 'What happens when machines start to think? Salil examines the philosophical frontiers of artificial intelligence and what it means for human identity.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=8jPQjjsBbIc',
-        youtubeMeta: { videoId: '8jPQjjsBbIc', thumbnailUrl: ytThumb('8jPQjjsBbIc'), channelName: 'BookVault', duration: 2880 },
+        youtubeMeta: { videoId: '8jPQjjsBbIc', thumbnailUrl: ytThumb('8jPQjjsBbIc'), channelName: 'Salil javeri', duration: 2880 },
         thumbnail: ytThumb('8jPQjjsBbIc'),
         duration: 2880, isFree: false, coinCost: 10, status: 'published', publishedAt: new Date('2024-12-15'), playCount: 1890,
       },
@@ -557,7 +557,7 @@ const seed = async () => {
         description: 'More options, less happiness. Barry Schwartz\'s paradox explains modern anxiety. Salil breaks it down and offers a framework for better decisions.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=VO6XEQIsCoM',
-        youtubeMeta: { videoId: 'VO6XEQIsCoM', thumbnailUrl: ytThumb('VO6XEQIsCoM'), channelName: 'BookVault', duration: 2160 },
+        youtubeMeta: { videoId: 'VO6XEQIsCoM', thumbnailUrl: ytThumb('VO6XEQIsCoM'), channelName: 'Salil javeri', duration: 2160 },
         thumbnail: ytThumb('VO6XEQIsCoM'),
         duration: 2160, isFree: true, coinCost: 0, status: 'published', publishedAt: new Date('2024-12-22'), playCount: 2560,
       },
@@ -567,7 +567,7 @@ const seed = async () => {
         description: 'A personal episode. Salil reads letters to himself at different life stages — honest, funny, and unexpectedly moving.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=W7vFJqFwDv0',
-        youtubeMeta: { videoId: 'W7vFJqFwDv0', thumbnailUrl: ytThumb('W7vFJqFwDv0'), channelName: 'BookVault', duration: 3120 },
+        youtubeMeta: { videoId: 'W7vFJqFwDv0', thumbnailUrl: ytThumb('W7vFJqFwDv0'), channelName: 'Salil javeri', duration: 3120 },
         thumbnail: ytThumb('W7vFJqFwDv0'),
         duration: 3120, isFree: false, coinCost: 15, status: 'published', publishedAt: new Date('2024-12-29'), playCount: 1740,
       },
@@ -593,7 +593,7 @@ const seed = async () => {
         description: 'Why habits are hard to break, and the neuroscience-backed approach to forming new ones. With practical exercises you can start today.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=PZ7lDrwYdZc',
-        youtubeMeta: { videoId: 'PZ7lDrwYdZc', thumbnailUrl: ytThumb('PZ7lDrwYdZc'), channelName: 'BookVault', duration: 2220 },
+        youtubeMeta: { videoId: 'PZ7lDrwYdZc', thumbnailUrl: ytThumb('PZ7lDrwYdZc'), channelName: 'Salil javeri', duration: 2220 },
         thumbnail: ytThumb('PZ7lDrwYdZc'),
         duration: 2220, isFree: true, coinCost: 0, status: 'published', publishedAt: new Date('2025-01-05'), playCount: 4120,
       },
@@ -603,7 +603,7 @@ const seed = async () => {
         description: 'High achievers are disproportionately affected by anxiety. Priya unpacks why and shares evidence-based interventions that actually work.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=WWloIAQpMcQ',
-        youtubeMeta: { videoId: 'WWloIAQpMcQ', thumbnailUrl: ytThumb('WWloIAQpMcQ'), channelName: 'BookVault', duration: 2640 },
+        youtubeMeta: { videoId: 'WWloIAQpMcQ', thumbnailUrl: ytThumb('WWloIAQpMcQ'), channelName: 'Salil javeri', duration: 2640 },
         thumbnail: ytThumb('WWloIAQpMcQ'),
         duration: 2640, isFree: false, coinCost: 12, status: 'published', publishedAt: new Date('2025-01-12'), playCount: 3380,
       },
@@ -613,7 +613,7 @@ const seed = async () => {
         description: 'Matthew Walker\'s research shows sleep deprivation is cognitive suicide. Priya explores the habits and rituals that transform sleep quality.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=5MuIMqhT8oM',
-        youtubeMeta: { videoId: '5MuIMqhT8oM', thumbnailUrl: ytThumb('5MuIMqhT8oM'), channelName: 'BookVault', duration: 2820 },
+        youtubeMeta: { videoId: '5MuIMqhT8oM', thumbnailUrl: ytThumb('5MuIMqhT8oM'), channelName: 'Salil javeri', duration: 2820 },
         thumbnail: ytThumb('5MuIMqhT8oM'),
         duration: 2820, isFree: false, coinCost: 12, status: 'published', publishedAt: new Date('2025-01-19'), playCount: 2910,
       },
@@ -623,7 +623,7 @@ const seed = async () => {
         description: 'We are drowning in notifications, content, and noise. Priya shares her 30-day digital detox experiment and the life-changing lessons it taught her.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=T4RFuFcPgng',
-        youtubeMeta: { videoId: 'T4RFuFcPgng', thumbnailUrl: ytThumb('T4RFuFcPgng'), channelName: 'BookVault', duration: 2400 },
+        youtubeMeta: { videoId: 'T4RFuFcPgng', thumbnailUrl: ytThumb('T4RFuFcPgng'), channelName: 'Salil javeri', duration: 2400 },
         thumbnail: ytThumb('T4RFuFcPgng'),
         duration: 2400, isFree: true, coinCost: 0, status: 'published', publishedAt: new Date('2025-01-26'), playCount: 3760,
       },
@@ -649,7 +649,7 @@ const seed = async () => {
         description: 'What actually is a Large Language Model? How does GPT work? Rohan explains in plain English, without the hype or the fear.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=zjkBMFhNj_g',
-        youtubeMeta: { videoId: 'zjkBMFhNj_g', thumbnailUrl: ytThumb('zjkBMFhNj_g'), channelName: 'BookVault Tech', duration: 2580 },
+        youtubeMeta: { videoId: 'zjkBMFhNj_g', thumbnailUrl: ytThumb('zjkBMFhNj_g'), channelName: 'Salil javeri Tech', duration: 2580 },
         thumbnail: ytThumb('zjkBMFhNj_g'),
         duration: 2580, isFree: true, coinCost: 0, status: 'published', publishedAt: new Date('2025-02-01'), playCount: 5640,
       },
@@ -659,7 +659,7 @@ const seed = async () => {
         description: 'Rohan interviews a founder who launched a profitable SaaS in a single month. What they built, how they found customers, and what they wish they knew.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=ysEN5RaKOlA',
-        youtubeMeta: { videoId: 'ysEN5RaKOlA', thumbnailUrl: ytThumb('ysEN5RaKOlA'), channelName: 'BookVault Tech', duration: 3300 },
+        youtubeMeta: { videoId: 'ysEN5RaKOlA', thumbnailUrl: ytThumb('ysEN5RaKOlA'), channelName: 'Salil javeri Tech', duration: 3300 },
         thumbnail: ytThumb('ysEN5RaKOlA'),
         duration: 3300, isFree: false, coinCost: 15, status: 'published', publishedAt: new Date('2025-02-08'), playCount: 4280,
       },
@@ -669,7 +669,7 @@ const seed = async () => {
         description: 'Two years after the crypto crash, what survived? Rohan separates the genuine use cases of blockchain from the noise, with a clear-eyed assessment.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=M576WGiDBdQ',
-        youtubeMeta: { videoId: 'M576WGiDBdQ', thumbnailUrl: ytThumb('M576WGiDBdQ'), channelName: 'BookVault Tech', duration: 2940 },
+        youtubeMeta: { videoId: 'M576WGiDBdQ', thumbnailUrl: ytThumb('M576WGiDBdQ'), channelName: 'Salil javeri Tech', duration: 2940 },
         thumbnail: ytThumb('M576WGiDBdQ'),
         duration: 2940, isFree: false, coinCost: 15, status: 'published', publishedAt: new Date('2025-02-15'), playCount: 3120,
       },
@@ -679,7 +679,7 @@ const seed = async () => {
         description: 'You no longer need to write a single line of code to build a product. Rohan explores the best no-code tools, use cases, and the limits of the no-code paradigm.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=YNfDyNEJYE8',
-        youtubeMeta: { videoId: 'YNfDyNEJYE8', thumbnailUrl: ytThumb('YNfDyNEJYE8'), channelName: 'BookVault Tech', duration: 2700 },
+        youtubeMeta: { videoId: 'YNfDyNEJYE8', thumbnailUrl: ytThumb('YNfDyNEJYE8'), channelName: 'Salil javeri Tech', duration: 2700 },
         thumbnail: ytThumb('YNfDyNEJYE8'),
         duration: 2700, isFree: true, coinCost: 0, status: 'published', publishedAt: new Date('2025-02-22'), playCount: 3890,
       },
@@ -708,7 +708,7 @@ const seed = async () => {
         description: 'Install Python, set up VS Code, and write your first program. We cover variables, data types, print statements, and basic input/output.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=rfscVS0vtbw',
-        youtubeMeta: { videoId: 'rfscVS0vtbw', thumbnailUrl: ytThumb('rfscVS0vtbw'), channelName: 'BookVault Learning', duration: 2700 },
+        youtubeMeta: { videoId: 'rfscVS0vtbw', thumbnailUrl: ytThumb('rfscVS0vtbw'), channelName: 'Salil javeri Learning', duration: 2700 },
         thumbnail: ytThumb('rfscVS0vtbw'),
         duration: 2700, isFree: true, coinCost: 0, status: 'published', publishedAt: new Date('2025-01-15'), viewCount: 8920,
       },
@@ -718,7 +718,7 @@ const seed = async () => {
         description: 'Master if/else, for loops, while loops, and functions. Learn how to structure your code like a professional developer.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=PkZNo7MFNFg',
-        youtubeMeta: { videoId: 'PkZNo7MFNFg', thumbnailUrl: ytThumb('PkZNo7MFNFg'), channelName: 'BookVault Learning', duration: 3600 },
+        youtubeMeta: { videoId: 'PkZNo7MFNFg', thumbnailUrl: ytThumb('PkZNo7MFNFg'), channelName: 'Salil javeri Learning', duration: 3600 },
         thumbnail: ytThumb('PkZNo7MFNFg'),
         duration: 3600, isFree: false, coinCost: 20, status: 'published', publishedAt: new Date('2025-01-22'), viewCount: 6340,
       },
@@ -728,7 +728,7 @@ const seed = async () => {
         description: 'Classes, objects, inheritance, and polymorphism explained clearly. Build a real project using OOP principles.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=Ke90Tje7VS0',
-        youtubeMeta: { videoId: 'Ke90Tje7VS0', thumbnailUrl: ytThumb('Ke90Tje7VS0'), channelName: 'BookVault Learning', duration: 4200 },
+        youtubeMeta: { videoId: 'Ke90Tje7VS0', thumbnailUrl: ytThumb('Ke90Tje7VS0'), channelName: 'Salil javeri Learning', duration: 4200 },
         thumbnail: ytThumb('Ke90Tje7VS0'),
         duration: 4200, isFree: false, coinCost: 25, status: 'published', publishedAt: new Date('2025-01-29'), viewCount: 5180,
       },
@@ -738,7 +738,7 @@ const seed = async () => {
         description: 'Fetch data from real APIs, handle JSON, and scrape websites with BeautifulSoup. Build a practical project using live data.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=SqvVm3QiQVk',
-        youtubeMeta: { videoId: 'SqvVm3QiQVk', thumbnailUrl: ytThumb('SqvVm3QiQVk'), channelName: 'BookVault Learning', duration: 3900 },
+        youtubeMeta: { videoId: 'SqvVm3QiQVk', thumbnailUrl: ytThumb('SqvVm3QiQVk'), channelName: 'Salil javeri Learning', duration: 3900 },
         thumbnail: ytThumb('SqvVm3QiQVk'),
         duration: 3900, isFree: false, coinCost: 25, status: 'published', publishedAt: new Date('2025-02-05'), viewCount: 4760,
       },
@@ -748,7 +748,7 @@ const seed = async () => {
         description: 'Put it all together: build a complete personal finance tracker with CSV export, API integration, and a clean CLI interface.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=_uQrJ0TkZlc',
-        youtubeMeta: { videoId: '_uQrJ0TkZlc', thumbnailUrl: ytThumb('_uQrJ0TkZlc'), channelName: 'BookVault Learning', duration: 5400 },
+        youtubeMeta: { videoId: '_uQrJ0TkZlc', thumbnailUrl: ytThumb('_uQrJ0TkZlc'), channelName: 'Salil javeri Learning', duration: 5400 },
         thumbnail: ytThumb('_uQrJ0TkZlc'),
         duration: 5400, isFree: false, coinCost: 30, status: 'published', publishedAt: new Date('2025-02-12'), viewCount: 4230,
       },
@@ -773,7 +773,7 @@ const seed = async () => {
         description: 'What is your baseline mindset? Take Priya\'s diagnostic quiz, understand your patterns, and see the map of changes ahead.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=yGLGnJUFotk',
-        youtubeMeta: { videoId: 'yGLGnJUFotk', thumbnailUrl: ytThumb('yGLGnJUFotk'), channelName: 'BookVault Wellness', duration: 2400 },
+        youtubeMeta: { videoId: 'yGLGnJUFotk', thumbnailUrl: ytThumb('yGLGnJUFotk'), channelName: 'Salil javeri Wellness', duration: 2400 },
         thumbnail: ytThumb('yGLGnJUFotk'),
         duration: 2400, isFree: true, coinCost: 0, status: 'published', publishedAt: new Date('2025-02-10'), viewCount: 7680,
       },
@@ -783,7 +783,7 @@ const seed = async () => {
         description: 'The victim loop keeps millions stuck. Priya breaks down the neuroscience of self-blame and the exact cognitive reframes that interrupt the pattern.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=H14bBuluwB8',
-        youtubeMeta: { videoId: 'H14bBuluwB8', thumbnailUrl: ytThumb('H14bBuluwB8'), channelName: 'BookVault Wellness', duration: 2700 },
+        youtubeMeta: { videoId: 'H14bBuluwB8', thumbnailUrl: ytThumb('H14bBuluwB8'), channelName: 'Salil javeri Wellness', duration: 2700 },
         thumbnail: ytThumb('H14bBuluwB8'),
         duration: 2700, isFree: false, coinCost: 20, status: 'published', publishedAt: new Date('2025-02-17'), viewCount: 5940,
       },
@@ -793,7 +793,7 @@ const seed = async () => {
         description: 'Identity change is the highest leverage point for behavioral change. Learn how to consciously redesign who you believe yourself to be.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=iG9CE55wbtY',
-        youtubeMeta: { videoId: 'iG9CE55wbtY', thumbnailUrl: ytThumb('iG9CE55wbtY'), channelName: 'BookVault Wellness', duration: 2880 },
+        youtubeMeta: { videoId: 'iG9CE55wbtY', thumbnailUrl: ytThumb('iG9CE55wbtY'), channelName: 'Salil javeri Wellness', duration: 2880 },
         thumbnail: ytThumb('iG9CE55wbtY'),
         duration: 2880, isFree: false, coinCost: 20, status: 'published', publishedAt: new Date('2025-02-24'), viewCount: 5200,
       },
@@ -803,7 +803,7 @@ const seed = async () => {
         description: 'Change without reinforcement reverts. Priya\'s 90-day protocol turns your new mindset into bedrock identity through deliberate practice and environmental design.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=zqdfFdUe964',
-        youtubeMeta: { videoId: 'zqdfFdUe964', thumbnailUrl: ytThumb('zqdfFdUe964'), channelName: 'BookVault Wellness', duration: 3240 },
+        youtubeMeta: { videoId: 'zqdfFdUe964', thumbnailUrl: ytThumb('zqdfFdUe964'), channelName: 'Salil javeri Wellness', duration: 3240 },
         thumbnail: ytThumb('zqdfFdUe964'),
         duration: 3240, isFree: false, coinCost: 25, status: 'published', publishedAt: new Date('2025-03-03'), viewCount: 4810,
       },
@@ -819,7 +819,7 @@ const seed = async () => {
         description: 'Salil pulls back the curtain on how he writes — from first idea to final draft. Includes his actual writing routine, tools, and the mindset behind every story.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=9YUr7wRN0os',
-        youtubeMeta: { videoId: '9YUr7wRN0os', thumbnailUrl: ytThumb('9YUr7wRN0os'), channelName: 'BookVault', duration: 2700 },
+        youtubeMeta: { videoId: '9YUr7wRN0os', thumbnailUrl: ytThumb('9YUr7wRN0os'), channelName: 'Salil javeri', duration: 2700 },
         thumbnail: ytThumb('9YUr7wRN0os'),
         duration: 2700, isFree: true, coinCost: 0, status: 'published', publishedAt: new Date('2025-01-20'), viewCount: 12400,
       },
@@ -829,7 +829,7 @@ const seed = async () => {
         description: 'Start your day with intention. This guided meditation is designed for busy professionals who need focus and calm before the chaos begins.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=inpok4MKVLM',
-        youtubeMeta: { videoId: 'inpok4MKVLM', thumbnailUrl: ytThumb('inpok4MKVLM'), channelName: 'BookVault Wellness', duration: 360 },
+        youtubeMeta: { videoId: 'inpok4MKVLM', thumbnailUrl: ytThumb('inpok4MKVLM'), channelName: 'Salil javeri Wellness', duration: 360 },
         thumbnail: ytThumb('inpok4MKVLM'),
         duration: 360, isFree: true, coinCost: 0, status: 'published', publishedAt: new Date('2025-02-03'), viewCount: 19800,
       },
@@ -839,7 +839,7 @@ const seed = async () => {
         description: 'Stop using ChatGPT as a search engine. Rohan shows advanced prompting techniques, API integration patterns, and real productivity workflows.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=sTeoEFzVNSc',
-        youtubeMeta: { videoId: 'sTeoEFzVNSc', thumbnailUrl: ytThumb('sTeoEFzVNSc'), channelName: 'BookVault Tech', duration: 3300 },
+        youtubeMeta: { videoId: 'sTeoEFzVNSc', thumbnailUrl: ytThumb('sTeoEFzVNSc'), channelName: 'Salil javeri Tech', duration: 3300 },
         thumbnail: ytThumb('sTeoEFzVNSc'),
         duration: 3300, isFree: true, coinCost: 0, status: 'published', publishedAt: new Date('2025-02-14'), viewCount: 28600,
       },
@@ -849,7 +849,7 @@ const seed = async () => {
         description: 'Why does motivation disappear? What actually drives sustained action? Priya explains dopamine, the reward circuit, and how to hack your brain for consistent drive.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=SKDIQnhAqAk',
-        youtubeMeta: { videoId: 'SKDIQnhAqAk', thumbnailUrl: ytThumb('SKDIQnhAqAk'), channelName: 'BookVault Wellness', duration: 2940 },
+        youtubeMeta: { videoId: 'SKDIQnhAqAk', thumbnailUrl: ytThumb('SKDIQnhAqAk'), channelName: 'Salil javeri Wellness', duration: 2940 },
         thumbnail: ytThumb('SKDIQnhAqAk'),
         duration: 2940, isFree: false, coinCost: 15, status: 'published', publishedAt: new Date('2025-02-28'), viewCount: 9340,
       },
@@ -859,7 +859,7 @@ const seed = async () => {
         description: 'Marcus Aurelius, Seneca, and Epictetus wrote 2,000 years ago. Their wisdom has never been more relevant. Salil unpacks the core ideas of Stoicism and how to live them.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=R9OCA6UFE-0',
-        youtubeMeta: { videoId: 'R9OCA6UFE-0', thumbnailUrl: ytThumb('R9OCA6UFE-0'), channelName: 'BookVault', duration: 3180 },
+        youtubeMeta: { videoId: 'R9OCA6UFE-0', thumbnailUrl: ytThumb('R9OCA6UFE-0'), channelName: 'Salil javeri', duration: 3180 },
         thumbnail: ytThumb('R9OCA6UFE-0'),
         duration: 3180, isFree: false, coinCost: 15, status: 'published', publishedAt: new Date('2025-03-05'), viewCount: 7820,
       },
@@ -869,7 +869,7 @@ const seed = async () => {
         description: 'Rohan live-builds a complete mobile app in 48 hours — from napkin sketch to App Store ready. Watch the entire process, mistakes and all.',
         sourceType: 'youtube_link',
         youtubeUrl: 'https://www.youtube.com/watch?v=0-S5a0eXPoc',
-        youtubeMeta: { videoId: '0-S5a0eXPoc', thumbnailUrl: ytThumb('0-S5a0eXPoc'), channelName: 'BookVault Tech', duration: 7200 },
+        youtubeMeta: { videoId: '0-S5a0eXPoc', thumbnailUrl: ytThumb('0-S5a0eXPoc'), channelName: 'Salil javeri Tech', duration: 7200 },
         thumbnail: ytThumb('0-S5a0eXPoc'),
         duration: 7200, isFree: false, coinCost: 30, status: 'published', publishedAt: new Date('2025-03-10'), viewCount: 15600,
       },
@@ -938,14 +938,14 @@ const seed = async () => {
 
     // ─── Summary ──────────────────────────────────────────────
     console.log('\n═══════════════════════════════════════════════════════════');
-    console.log('   📚  BookVault Database Seeded Successfully');
+    console.log('   📚  Salil javeri Database Seeded Successfully');
     console.log('═══════════════════════════════════════════════════════════');
     console.log('  Accounts:');
-    console.log('    Super Admin:  admin@bookvault.com / admin123456');
-    console.log('    Author 1:     salil@bookvault.com / author123456');
-    console.log('    Author 2:     priya@bookvault.com / author123456');
-    console.log('    Author 3:     rohan@bookvault.com / author123456');
-    console.log('    Reader:       reader@bookvault.com / reader123456 (500 coins)');
+    console.log('    Super Admin:  admin@saliljaveri.com / admin123456');
+    console.log('    Author 1:     salil@saliljaveri.com / author123456');
+    console.log('    Author 2:     priya@saliljaveri.com / author123456');
+    console.log('    Author 3:     rohan@saliljaveri.com / author123456');
+    console.log('    Reader:       reader@saliljaveri.com / reader123456 (500 coins)');
     console.log('');
     console.log('  Content:');
     console.log('    📖  5 Books  (13 chapters)');

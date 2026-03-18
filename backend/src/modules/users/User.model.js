@@ -31,6 +31,7 @@ const userSchema = new mongoose.Schema(
     lastActive: { type: Date, default: Date.now },
     isPremium: { type: Boolean, default: false },
     premiumExpiresAt: { type: Date, default: null },
+    referralCode: { type: String, unique: true, sparse: true, uppercase: true, trim: true },
   },
   {
     timestamps: true,
@@ -46,8 +47,25 @@ userSchema.index({ role: 1 });
 userSchema.index({ isBlocked: 1 });
 userSchema.index({ googleId: 1 }, { sparse: true });
 
-// Hash password before saving
+// Generate unique referral code for new users
+const generateReferralCode = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+};
+
+// Hash password + assign referral code before saving
 userSchema.pre('save', async function (next) {
+  // Assign a unique referral code on first save
+  if (this.isNew && !this.referralCode) {
+    let code;
+    let exists = true;
+    while (exists) {
+      code = generateReferralCode();
+      exists = await this.constructor.exists({ referralCode: code });
+    }
+    this.referralCode = code;
+  }
+
   if (!this.isModified('passwordHash')) return next();
   this.passwordHash = await bcrypt.hash(this.passwordHash, 12);
   next();

@@ -15,7 +15,7 @@ const getAudiobooks = asyncHandler(async (req, res) => {
 
   let tracks = await Audiobook.find(query)
     .populate({ path: 'bookId', select: 'title authorId coverImage', populate: { path: 'authorId', select: 'displayName name' } })
-    .sort({ bookId: 1, createdAt: -1 })
+    .sort({ bookId: 1, orderNumber: 1 })
     .lean();
 
   if (search) {
@@ -41,11 +41,11 @@ const getAudiobooks = asyncHandler(async (req, res) => {
 
 /**
  * POST /api/v1/admin/audiobooks
- * Body: { bookId, title, audioUrl, duration, narrator, isFree, coinCost, status }
+ * Body: { bookId, title, audioUrl, duration, narrator, status }
  */
 const createAudiobook = asyncHandler(async (req, res) => {
-  const { bookId, title, duration, narrator, isFree, coinCost, status } = req.body;
-  
+  const { bookId, title, duration, narrator, status, orderNumber } = req.body;
+
   let audioUrl = req.body.audioUrl || '';
   if (req.file && req.file.location) {
     audioUrl = req.file.location;
@@ -58,14 +58,16 @@ const createAudiobook = asyncHandler(async (req, res) => {
 
   const track = await Audiobook.create({
     bookId,
+    orderNumber: Number(orderNumber) || 1,
     title,
     audioUrl,
     duration: Number(duration) || 0,
     narrator: narrator || '',
-    isFree: isFree === true || isFree === 'true',
-    coinCost: Number(coinCost) || 0,
     status: status || 'draft',
   });
+
+  // Keep totalChapters in sync
+  await Book.findByIdAndUpdate(bookId, { $inc: { totalChapters: 1 } });
 
   await track.populate({ path: 'bookId', select: 'title authorId', populate: { path: 'authorId', select: 'displayName name' } });
 
@@ -86,7 +88,7 @@ const getAudiobook = asyncHandler(async (req, res) => {
  * PUT /api/v1/admin/audiobooks/:id
  */
 const updateAudiobook = asyncHandler(async (req, res) => {
-  const { title, duration, narrator, isFree, coinCost, status } = req.body;
+  const { title, duration, narrator, status, orderNumber } = req.body;
   let audioUrl = req.body.audioUrl;
 
   if (req.file && req.file.location) {
@@ -100,9 +102,8 @@ const updateAudiobook = asyncHandler(async (req, res) => {
       ...(audioUrl !== undefined && { audioUrl }),
       ...(duration !== undefined && { duration: Number(duration) }),
       ...(narrator !== undefined && { narrator }),
-      ...(isFree !== undefined && { isFree: isFree === true || isFree === 'true' }),
-      ...(coinCost !== undefined && { coinCost: Number(coinCost) }),
       ...(status !== undefined && { status }),
+      ...(orderNumber !== undefined && { orderNumber: Number(orderNumber) }),
     },
     { new: true, runValidators: true }
   ).populate({ path: 'bookId', select: 'title authorId', populate: { path: 'authorId', select: 'displayName name' } });
@@ -117,6 +118,7 @@ const updateAudiobook = asyncHandler(async (req, res) => {
 const deleteAudiobook = asyncHandler(async (req, res) => {
   const track = await Audiobook.findByIdAndDelete(req.params.id);
   if (!track) throw AppError.notFound('Audiobook track not found');
+  await Book.findByIdAndUpdate(track.bookId, { $inc: { totalChapters: -1 } });
   success(res, null, 'Audiobook track deleted');
 });
 

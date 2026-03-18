@@ -45,9 +45,18 @@ export const AudiobooksPage = () => {
 
   const fetchBooks = async () => {
     try {
-      const res = await api.get('/admin/books', { params: { limit: 200 } });
-      setBooks(res.books || []);
-    } catch { setBooks([]); }
+      const res = await api.get('/admin/books', { params: { limit: 100, contentType: 'audiobook' } });
+      const list =
+        res?.data?.books ||
+        res?.books ||
+        res?.data?.data ||
+        res?.data ||
+        [];
+      const audioOnly = Array.isArray(list) ? list.filter(b => b.contentType === 'audiobook') : [];
+      setBooks(audioOnly);
+    } catch {
+      setBooks([]);
+    }
   };
 
   useEffect(() => { fetchBooks(); }, []);
@@ -100,8 +109,6 @@ export const AudiobooksPage = () => {
           audioUrl: formData.get('audioUrl') || undefined,
           narrator: formData.get('narrator') || '',
           duration: Number(formData.get('duration')) || 0,
-          isFree: formData.get('isFree'),
-          coinCost: Number(formData.get('coinCost')) || 0,
           status: formData.get('status'),
         };
         await api.put(`/admin/audiobooks/${editTrack._id}`, payload);
@@ -112,24 +119,20 @@ export const AudiobooksPage = () => {
     } catch (err) { toast.error(err.message || 'Failed to update'); }
   };
 
+  const bookLabel = (b) => b.bookLanguage ? `${b.title} (${b.bookLanguage})` : b.title;
   const bookOptions = [
     { value: '', label: 'All books' },
-    ...books.map(b => ({ value: b._id, label: b.title })),
+    ...books.map(b => ({ value: b._id, label: bookLabel(b) })),
   ];
   const bookSelectOptions = [
     { value: '', label: 'Select book' },
-    ...books.map(b => ({ value: b._id, label: b.title })),
+    ...books.map(b => ({ value: b._id, label: bookLabel(b) })),
   ];
   const statusOptions = [
     { value: 'draft', label: 'Draft' },
     { value: 'published', label: 'Published' },
     { value: 'archived', label: 'Archived' },
   ];
-  const pricingOptions = [
-    { value: 'true', label: 'Free' },
-    { value: 'false', label: 'Paid' },
-  ];
-
   const columns = [
     {
       header: 'Track', key: 'title', align: 'left',
@@ -159,8 +162,8 @@ export const AudiobooksPage = () => {
         </div>
       ),
     },
+    { header: 'Language', key: 'bookLanguage', align: 'center', render: (row) => <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{row.bookId?.bookLanguage || '\u2014'}</span> },
     { header: 'Status', key: 'status', align: 'center', render: (row) => <Badge variant={row.status === 'published' ? 'success' : row.status === 'archived' ? 'danger' : 'neutral'}>{row.status}</Badge> },
-    { header: 'Access', key: 'isFree', align: 'center', render: (row) => row.isFree ? <Badge variant="success">Free</Badge> : <span className="text-xs font-semibold inline-block" style={{ color: '#f59e0b' }}>{row.coinCost} coins</span> },
     { header: 'Listens', key: 'listenCount', align: 'center', render: (row) => <span className="text-sm inline-block" style={{ color: 'var(--text-secondary)' }}>{(row.listenCount || 0).toLocaleString()}</span> },
     {
       header: '', key: 'actions', align: 'right',
@@ -192,11 +195,8 @@ export const AudiobooksPage = () => {
         <Input label="Narrator" name="narrator" placeholder="Narrator name" defaultValue={defaultValues.narrator || ''} />
         <Input label="Duration (seconds)" name="duration" type="number" placeholder="0" defaultValue={defaultValues.duration || 0} />
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <Select label="Access" name="isFree" options={pricingOptions} defaultValue={defaultValues.isFree ? 'true' : 'false'} />
-        <Input label="Coin Cost" name="coinCost" type="number" placeholder="0" defaultValue={defaultValues.coinCost || 0} />
-      </div>
       <Select label="Status" name="status" options={statusOptions} defaultValue={defaultValues.status || 'draft'} />
+
       <div className="flex justify-end gap-3 pt-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
         <Button type="submit">{submitLabel}</Button>

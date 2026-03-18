@@ -87,6 +87,7 @@ export const AuthorsPage = () => {
         email: f.get('email'),
         password: f.get('password'),
         bio: f.get('bio') || '',
+        authorType: f.get('authorType') || 'self',
       });
       toast.success('Author created');
       setShowCreate(false);
@@ -138,7 +139,7 @@ export const AuthorsPage = () => {
         <div className="flex items-center gap-3">
           <div
             className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}
+            style={{ background: row.authorType === 'third_party' ? 'linear-gradient(135deg, #2563eb, #7c3aed)' : 'linear-gradient(135deg, #f59e0b, #ef4444)' }}
           >
             {(row.displayName || '?').charAt(0).toUpperCase()}
           </div>
@@ -149,6 +150,16 @@ export const AuthorsPage = () => {
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{row.email}</p>
           </div>
         </div>
+      ),
+    },
+    {
+      header: 'Type',
+      key: 'authorType',
+      align: 'center',
+      render: (row) => (
+        <Badge variant={row.authorType === 'third_party' ? 'info' : 'accent'}>
+          {row.authorType === 'third_party' ? 'Third Party' : 'Self'}
+        </Badge>
       ),
     },
     {
@@ -268,6 +279,12 @@ export const AuthorsPage = () => {
           <Input label="Display Name" name="displayName" placeholder="e.g. Salil Javeri" required />
           <Input label="Email" name="email" type="email" placeholder="author@example.com" required />
           <Input label="Password" name="password" type="password" placeholder="Min 6 characters" required />
+          <Select label="Author Type" name="authorType"
+            options={[
+              { value: 'self', label: 'Self (In-house)' },
+              { value: 'third_party', label: 'Third Party' },
+            ]}
+          />
           <Textarea label="Bio" name="bio" placeholder="Short bio about the author" rows={3} />
           <div className="flex justify-end gap-3 pt-2">
             <Button

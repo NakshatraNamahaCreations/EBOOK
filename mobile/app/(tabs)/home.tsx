@@ -18,13 +18,13 @@ import { typography } from '../../src/theme/typography';
 import { spacing } from '../../src/theme/spacing';
 import { useAppDispatch } from '../../src/hooks/useAppDispatch';
 import { useAppSelector } from '../../src/hooks/useAppSelector';
-import { fetchHomeData } from '../../src/store/slices/contentSlice';
+import { fetchHomeData, fetchWishlist } from '../../src/store/slices/contentSlice';
 import { ContentCarousel } from '../../src/components/carousels/ContentCarousel';
 import { LoadingScreen } from '../../src/components/layout/LoadingScreen';
 import { useTheme } from '../../src/theme/ThemeContext';
 
 const { width } = Dimensions.get('window');
-const BANNER_HEIGHT = 200;
+const BANNER_HEIGHT = 180;
 const SIDE_PADDING = spacing.md;
 const ITEM_GAP = spacing.md;
 const BANNER_WIDTH = width - SIDE_PADDING * 2;
@@ -44,8 +44,6 @@ export default function HomeScreen() {
     trendingBooks,
     trendingAudiobooks,
     trendingPodcasts,
-    newReleases,
-    featured,
     isLoading,
   } = useAppSelector((state) => state.content);
 
@@ -65,7 +63,10 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [banners]);
 
-  const loadData = () => { dispatch(fetchHomeData()); };
+  const loadData = () => {
+    dispatch(fetchHomeData());
+    if (user?.id) dispatch(fetchWishlist(user.id));
+  };
 
   const onMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;
@@ -206,8 +207,6 @@ export default function HomeScreen() {
         <View style={styles.content}>
           <ContentCarousel title="Trending Books" items={trendingBooks} />
           <ContentCarousel title="Popular Audiobooks" items={trendingAudiobooks} />
-          <ContentCarousel title="New Releases" items={newReleases} />
-          <ContentCarousel title="Featured" items={featured} />
           <ContentCarousel title="Trending Podcasts" items={trendingPodcasts} />
         </View>
       </ScrollView>

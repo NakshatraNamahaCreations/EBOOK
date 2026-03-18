@@ -28,7 +28,7 @@ const adminCreateChapter = asyncHandler(async (req, res) => {
 });
 
 const adminGetChapters = asyncHandler(async (req, res) => {
-  const chapters = await chapterService.getChaptersByBook(req.params.bookId);
+  const chapters = await chapterService.getChaptersByBook(req.params.bookId, true);
   success(res, chapters);
 });
 

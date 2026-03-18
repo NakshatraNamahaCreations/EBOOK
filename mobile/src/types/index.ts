@@ -7,6 +7,7 @@ export enum ContentType {
 
 export enum AccessType {
   FREE = 'free',
+  PAID = 'paid',
   PREMIUM = 'premium',
   COINS = 'coins',
   SUBSCRIPTION = 'subscription',
@@ -14,10 +15,11 @@ export enum AccessType {
 
 export interface User {
   id: string;
-  mobile_number: string;
-  country_code: string;
+  mobile_number?: string;
+  country_code?: string;
   name?: string;
   email?: string;
+  referral_code?: string;
   profile_image?: string;
   coin_balance: number;
   is_premium: boolean;
@@ -28,6 +30,7 @@ export interface User {
 
 export interface AuthResponse {
   access_token: string;
+  refresh_token?: string;
   user: User;
   is_new_user: boolean;
 }
@@ -55,6 +58,7 @@ export interface Content {
   title: string;
   description: string;
   content_type: ContentType;
+  book_content_type?: 'ebook' | 'audiobook';
   cover_image: string;
   author_id: string;
   author_name: string;
@@ -67,6 +71,8 @@ export interface Content {
   reviews_count: number;
   access_type: AccessType;
   coin_price: number;
+  price_inr?: number;
+  is_purchased?: boolean;
   chapters: Chapter[];
   sample_chapter_id?: string;
   is_trending: boolean;

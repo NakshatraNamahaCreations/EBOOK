@@ -81,7 +81,7 @@ export const LoginPage = () => {
         <Input
           label="Email Address"
           type="email"
-          placeholder="admin@bookvault.com"
+          placeholder="admin@saliljaveri.com"
           {...register('email')}
           error={errors.email?.message}
         />

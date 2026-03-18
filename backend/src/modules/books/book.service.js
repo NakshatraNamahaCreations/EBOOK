@@ -6,14 +6,15 @@ const slugify = require('slugify');
 /**
  * Create a new book
  */
-const createBook = async (data, authorId = null) => {
-  const slug = slugify(data.title, { lower: true, strict: true });
+const generateSlug = (title) => {
+  let slug = slugify(title, { lower: true, strict: true, trim: true });
+  // If slugify produces empty string (non-latin scripts), use a fallback
+  if (!slug) slug = 'book';
+  return slug + '-' + Date.now().toString(36);
+};
 
-  // Check for duplicate slug
-  const existing = await Book.findOne({ slug });
-  if (existing) {
-    throw AppError.conflict('A book with this title already exists');
-  }
+const createBook = async (data, authorId = null) => {
+  const slug = generateSlug(data.title);
 
   const bookData = { ...data, slug };
   if (authorId) bookData.authorId = authorId;
@@ -33,6 +34,8 @@ const getBooks = async ({
   status,
   authorId,
   categoryId,
+  contentType,
+  bookLanguage,
   isFeatured,
   sortBy = 'createdAt',
   sortOrder = 'desc',
@@ -48,6 +51,11 @@ if (search) {
 if (status) query.status = status;
 if (authorId) query.authorId = authorId;
 if (categoryId) query.categoryId = categoryId;
+if (contentType) {
+  // Legacy ebook docs may not have contentType set — treat missing field as 'ebook'
+  query.contentType = contentType === 'ebook' ? { $in: ['ebook', null] } : contentType;
+}
+if (bookLanguage) query.bookLanguage = bookLanguage;
 if (isFeatured !== undefined) query.isFeatured = isFeatured;
 
   const sort = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
@@ -65,7 +73,7 @@ if (isFeatured !== undefined) query.isFeatured = isFeatured;
     Book.countDocuments(query),
   ]);
 
-  console.log("books",books)
+ 
 
   return {
     books,
@@ -135,16 +143,19 @@ const updateBook = async (bookId, data, authorId = null) => {
 };
 
 /**
- * Delete (archive) a book
+ * Permanently delete a book and all its chapters
  */
 const deleteBook = async (bookId) => {
   const book = await Book.findById(bookId);
   if (!book) throw AppError.notFound('Book not found');
 
-  book.status = 'archived';
-  book.isPublished = false;
-  await book.save();
-  return book;
+  // Delete all chapters belonging to this book
+  await Chapter.deleteMany({ bookId });
+
+  // Delete the book itself
+  await Book.findByIdAndDelete(bookId);
+
+  return null;
 };
 
 /**

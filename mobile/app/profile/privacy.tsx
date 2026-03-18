@@ -11,12 +11,12 @@ const SECTIONS = [
   { title: '3. Data Sharing', body: 'We do not sell your personal information. We may share data with trusted service providers who assist in operating the App (e.g., cloud hosting, payment processors) under strict confidentiality agreements. We may disclose data when required by law.' },
   { title: '4. Phone Number & OTP', body: 'Your phone number is used solely for authentication via One-Time Password (OTP). We do not share your phone number with third parties for marketing purposes.' },
   { title: '5. Cookies & Tracking', body: 'The App uses device identifiers and analytics tools to understand usage patterns and improve performance. You can limit analytics tracking through your device settings.' },
-  { title: '6. Data Retention', body: 'We retain your data for as long as your account is active or as needed to provide services. You may request deletion of your account and associated data by contacting privacy@bookvault.app.' },
+  { title: '6. Data Retention', body: 'We retain your data for as long as your account is active or as needed to provide services. You may request deletion of your account and associated data by contacting privacy@saliljaveri.app.' },
   { title: '7. Security', body: 'We implement industry-standard security measures including encryption in transit (HTTPS/TLS) and at rest. However, no method of transmission over the internet is 100% secure.' },
-  { title: "8. Children's Privacy", body: 'BookVault is not directed to children under 13. We do not knowingly collect personal information from children under 13. If you believe a child has provided us personal data, please contact us immediately.' },
-  { title: '9. Your Rights', body: 'Depending on your location, you may have rights to access, correct, or delete your personal information. To exercise these rights, contact privacy@bookvault.app.' },
+  { title: "8. Children's Privacy", body: 'Salil javeri is not directed to children under 13. We do not knowingly collect personal information from children under 13. If you believe a child has provided us personal data, please contact us immediately.' },
+  { title: '9. Your Rights', body: 'Depending on your location, you may have rights to access, correct, or delete your personal information. To exercise these rights, contact privacy@saliljaveri.app.' },
   { title: '10. Changes to This Policy', body: 'We may update this Privacy Policy periodically. We will notify you of significant changes through the App. Continued use after changes constitutes acceptance.' },
-  { title: '11. Contact Us', body: 'For privacy-related questions or requests, contact: privacy@bookvault.app' },
+  { title: '11. Contact Us', body: 'For privacy-related questions or requests, contact: privacy@saliljaveri.app' },
 ];
 
 export default function PrivacyScreen() {

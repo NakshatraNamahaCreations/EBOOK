@@ -15,7 +15,16 @@ const bookSchema = new mongoose.Schema(
     genres: [{ type: String, trim: true }],
     tags: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Tag' }],
     categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
-    language: { type: String, default: 'en' },
+    bookLanguage: { type: String, default: 'English' },
+    contentType: {
+      type: String,
+      enum: ['ebook', 'audiobook'],
+      default: 'ebook',
+    },
+    isFree: { type: Boolean, default: true },
+    ebookPrice: { type: Number, default: 0 },
+    audiobookPrice: { type: Number, default: 0 },
+    comboPrice: { type: Number, default: 0 },
     status: {
       type: String,
       enum: ['draft', 'published', 'archived'],
@@ -41,12 +50,14 @@ bookSchema.index({ authorId: 1 });
 bookSchema.index({ status: 1 });
 bookSchema.index({ categoryId: 1 });
 bookSchema.index({ isFeatured: 1 });
-bookSchema.index({ title: 'text', description: 'text' });
+bookSchema.index({ title: 'text', description: 'text' }, { default_language: 'none' });
 
 // Auto-generate slug from title
 bookSchema.pre('save', function (next) {
   if (this.isModified('title')) {
-    this.slug = slugify(this.title, { lower: true, strict: true }) + '-' + Date.now().toString(36);
+    let slug = slugify(this.title, { lower: true, strict: true, trim: true });
+    if (!slug) slug = 'book';
+    this.slug = slug + '-' + Date.now().toString(36);
   }
   next();
 });
