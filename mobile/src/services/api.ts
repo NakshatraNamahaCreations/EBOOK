@@ -3,7 +3,7 @@ import { storage } from '../utils/storage';
 
 // Get backend URL — validate it's a proper absolute URL
 const rawUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-const BACKEND_URL = rawUrl.startsWith('http') ? rawUrl : 'http://192.168.1.70:5001';
+const BACKEND_URL = rawUrl.startsWith('http') ? rawUrl : 'http://192.168.1.71:5001';
 
 console.log('API Base URL:', BACKEND_URL);
 

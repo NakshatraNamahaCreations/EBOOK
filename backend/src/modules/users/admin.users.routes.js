@@ -8,6 +8,8 @@ router.use(authenticate);
 router.use(authorize('admin', 'superadmin'));
 
 router.get('/', usersController.getUsers);
+router.get('/admins', usersController.getAdmins);
+
 router.post('/', usersController.createUser);
 router.get('/:id', usersController.getUserDetails);
 router.put('/:id', usersController.updateUser);

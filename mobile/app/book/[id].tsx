@@ -575,7 +575,7 @@ export default function BookDetailScreen() {
                 activeOpacity={0.7}
                 disabled={isProcessing || purchaseLoading}
               >
-                <Text style={styles.chapterOrder}>{chapter.order}</Text>
+                <Text style={styles.chapterOrder}>{index+1}</Text>
                 <View style={styles.chapterTitleContainer}>
                   <Text style={styles.chapterTitle} numberOfLines={1}>{chapter.title}</Text>
                 </View>

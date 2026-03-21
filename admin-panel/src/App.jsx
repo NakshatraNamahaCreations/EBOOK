@@ -9,6 +9,7 @@ import { AuthLayout } from './layouts/AuthLayout';
 
 // Features
 import { LoginPage } from './features/auth/LoginPage';
+import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { UsersPage } from './features/users/UsersPage';
 import { AuthorsPage } from './features/authors/AuthorsPage';
@@ -38,6 +39,7 @@ export const App = () => {
         <Routes>
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           </Route>
           <Route element={<AdminLayout />}>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

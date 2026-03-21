@@ -70,6 +70,24 @@ const forgotPassword = asyncHandler(async (req, res) => {
 });
 
 /**
+ * POST /api/v1/auth/forgot-password-otp
+ * Mobile-friendly: sends a 6-digit OTP to the user's email
+ */
+const forgotPasswordOTP = asyncHandler(async (req, res) => {
+  const result = await authService.forgotPasswordOTP(req.body.email);
+  success(res, result, 'OTP sent to your email');
+});
+
+/**
+ * POST /api/v1/auth/verify-forgot-password-otp
+ * Verifies the OTP and returns a short-lived reset token
+ */
+const verifyForgotPasswordOTP = asyncHandler(async (req, res) => {
+  const result = await authService.verifyForgotPasswordOTP(req.body.email, req.body.otp);
+  success(res, result, 'OTP verified');
+});
+
+/**
  * POST /api/v1/auth/reset-password
  */
 const resetPassword = asyncHandler(async (req, res) => {
@@ -142,6 +160,8 @@ module.exports = {
   refreshToken,
   logout,
   forgotPassword,
+  forgotPasswordOTP,
+  verifyForgotPasswordOTP,
   resetPassword,
   requestOTP,
   verifyOTP,

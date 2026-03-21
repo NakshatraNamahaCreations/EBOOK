@@ -37,10 +37,18 @@ const resetPasswordSchema = {
   }),
 };
 
+const verifyForgotPasswordOTPSchema = {
+  body: Joi.object({
+    email: Joi.string().email().required(),
+    otp: Joi.string().length(6).pattern(/^\d+$/).required(),
+  }),
+};
+
 module.exports = {
   registerSchema,
   loginSchema,
   refreshTokenSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  verifyForgotPasswordOTPSchema,
 };

@@ -8,6 +8,7 @@ const {
   refreshTokenSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  verifyForgotPasswordOTPSchema,
 } = require('./auth.validators');
 const { authenticate } = require('../../common/auth.middleware');
 
@@ -18,6 +19,8 @@ router.post('/admin/login', validate(loginSchema), authController.adminLogin);
 router.post('/author/login', validate(loginSchema), authController.authorLogin);
 router.post('/refresh-token', validate(refreshTokenSchema), authController.refreshToken);
 router.post('/forgot-password', validate(forgotPasswordSchema), authController.forgotPassword);
+router.post('/forgot-password-otp', validate(forgotPasswordSchema), authController.forgotPasswordOTP);
+router.post('/verify-forgot-password-otp', validate(verifyForgotPasswordOTPSchema), authController.verifyForgotPasswordOTP);
 router.post('/reset-password', validate(resetPasswordSchema), authController.resetPassword);
 
 // Public routes - Phone/OTP (canonical)

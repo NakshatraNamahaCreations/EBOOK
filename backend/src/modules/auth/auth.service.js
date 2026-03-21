@@ -11,6 +11,8 @@ const DeviceSession = require('../security/DeviceSession.model');
 const AppError = require('../../common/AppError');
 const otpService = require('./otp.service');
 const PhoneOTP = require('./PhoneOTP.model');
+const EmailOTP = require('./EmailOTP.model');
+const emailService = require('../../common/email.service');
 
 const REFERRAL_REWARD_COINS = 10;
 
@@ -237,6 +239,113 @@ const forgotPassword = async (email) => {
 };
 
 /**
+ * Forgot password via OTP - send 6-digit OTP to email
+ */
+const forgotPasswordOTP = async (email) => {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  // Silently succeed if user does not exist (security best practice)
+  const user = await User.findOne({ email: normalizedEmail });
+  if (!user) {
+    return { message: 'If this email is registered, an OTP has been sent.' };
+  }
+
+  // Block check
+  const existing = await EmailOTP.findOne({ email: normalizedEmail, purpose: 'forgot_password' });
+  if (existing?.blockedUntil && new Date() < existing.blockedUntil) {
+    const minutesLeft = Math.ceil((existing.blockedUntil - new Date()) / 60000);
+    throw AppError.tooManyRequests(`Too many attempts. Try again in ${minutesLeft} minute(s).`);
+  }
+
+  // Rate limit: max 3 OTPs per 10 minutes
+  const recentCount = await EmailOTP.countDocuments({
+    email: normalizedEmail,
+    purpose: 'forgot_password',
+    createdAt: { $gte: new Date(Date.now() - 10 * 60 * 1000) },
+  });
+  if (recentCount >= 3) {
+    await EmailOTP.findOneAndUpdate(
+      { email: normalizedEmail, purpose: 'forgot_password' },
+      { blockedUntil: new Date(Date.now() + 10 * 60 * 1000) },
+      { upsert: true }
+    );
+    throw AppError.tooManyRequests('Too many OTP requests. Try again in 10 minutes.');
+  }
+
+  // Delete any previous unverified OTPs for this email
+  await EmailOTP.deleteMany({ email: normalizedEmail, purpose: 'forgot_password', verified: false });
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  await EmailOTP.create({ email: normalizedEmail, otp, purpose: 'forgot_password', expiresAt });
+
+  // Send OTP via email
+  try {
+    await emailService.sendForgotPasswordOTP(normalizedEmail, otp, 10);
+  } catch (emailErr) {
+    // Log but don't expose email errors to client; fall back to console in dev
+    console.error('Email send failed:', emailErr.message);
+    if (config.env === 'development') {
+      console.log(`\n📧 [ForgotPassword OTP] Email: ${normalizedEmail} | OTP: ${otp}\n`);
+    }
+  }
+
+  const result = { message: 'OTP sent to your email address', expiresIn: 600 };
+  if (config.env === 'development') result.otp = otp;
+  return result;
+};
+
+/**
+ * Verify forgot-password OTP and return a short-lived reset token
+ */
+const verifyForgotPasswordOTP = async (email, otp) => {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const record = await EmailOTP.findOne({
+    email: normalizedEmail,
+    purpose: 'forgot_password',
+    verified: false,
+  });
+
+  if (!record) {
+    throw AppError.unauthorized('OTP not found or already used. Request a new one.');
+  }
+
+  if (new Date() > record.expiresAt) {
+    await EmailOTP.findByIdAndDelete(record._id);
+    throw AppError.unauthorized('OTP has expired. Please request a new one.');
+  }
+
+  if (record.attempts >= 5) {
+    throw AppError.forbidden('Too many incorrect attempts. Request a new OTP.');
+  }
+
+  if (record.otp !== otp.trim()) {
+    await EmailOTP.findByIdAndUpdate(record._id, { attempts: record.attempts + 1 });
+    throw AppError.unauthorized('Invalid OTP. Please try again.');
+  }
+
+  // Mark as verified
+  await EmailOTP.findByIdAndUpdate(record._id, { verified: true });
+
+  // Issue a short-lived reset token
+  const user = await User.findOne({ email: normalizedEmail });
+  if (!user) throw AppError.notFound('User not found');
+
+  const resetToken = jwt.sign(
+    { userId: user._id, type: 'reset' },
+    config.jwt.accessSecret,
+    { expiresIn: '15m' }
+  );
+
+  // Clean up the verified OTP record
+  await EmailOTP.findByIdAndDelete(record._id);
+
+  return { message: 'OTP verified', resetToken };
+};
+
+/**
  * Reset password
  */
 const resetPassword = async (token, newPassword) => {
@@ -355,6 +464,8 @@ module.exports = {
   login,
   refreshAccessToken,
   forgotPassword,
+  forgotPasswordOTP,
+  verifyForgotPasswordOTP,
   resetPassword,
   generateTokens,
   requestOTP,

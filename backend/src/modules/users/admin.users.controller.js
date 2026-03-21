@@ -42,6 +42,47 @@ exports.getUsers = async (req, res, next) => {
   }
 };
 
+exports.getAdmins = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 15, search = "" } = req.query;
+
+    const pageNumber = parseInt(page, 10) || 1;
+    const limitNumber = parseInt(limit, 10) || 15;
+
+    const query = {
+      role: { $in: ["admin", "superadmin"] },
+    };
+
+    if (search.trim()) {
+      query.$or = [
+        { name: { $regex: search.trim(), $options: "i" } },
+        { email: { $regex: search.trim(), $options: "i" } },
+      ];
+    }
+
+    const users = await User.find(query)
+      .select("-passwordHash")
+      .sort({ createdAt: -1 })
+      .skip((pageNumber - 1) * limitNumber)
+      .limit(limitNumber);
+
+    const total = await User.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      data: users,
+      pagination: {
+        page: pageNumber,
+        limit: limitNumber,
+        total,
+        pages: Math.ceil(total / limitNumber),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // GET /admin/users/:id
 exports.getUserDetails = async (req, res, next) => {
   try {

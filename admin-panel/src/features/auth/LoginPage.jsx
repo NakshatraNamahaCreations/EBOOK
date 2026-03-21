@@ -9,6 +9,7 @@ import { Button } from '../../components/ui/Button';
 import toast from 'react-hot-toast';
 import { LogIn } from 'lucide-react';
 import api from '../../services/api';
+import { Link } from 'react-router-dom';
 
 
 const loginSchema = z.object({
@@ -107,19 +108,17 @@ export const LoginPage = () => {
             </span>
           </label>
 
-          <button
-            type="button"
+          <Link
+            to="/forgot-password"
             style={{
               fontSize: '0.82rem',
               fontWeight: 500,
               color: 'var(--accent)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
+              textDecoration: 'none',
             }}
           >
             Forgot password?
-          </button>
+          </Link>
         </div>
 
         <Button

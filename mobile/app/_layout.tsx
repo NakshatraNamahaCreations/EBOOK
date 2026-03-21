@@ -35,6 +35,7 @@ function AppStack() {
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="verify-otp" options={{ headerShown: false }} />
+      <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="book/[id]" options={{ title: 'Book Details', headerBackTitle: 'Back' }} />
       <Stack.Screen name="audiobook/[id]" options={{ title: 'Audiobook Details', headerBackTitle: 'Back' }} />

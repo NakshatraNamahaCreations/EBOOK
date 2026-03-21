@@ -135,6 +135,8 @@ export default function LoginScreen() {
     },
     errorText: { ...typography.bodySmall, color: '#EF4444', textAlign: 'center' },
     terms: { ...typography.caption, color: colors.textMuted, textAlign: 'center', marginTop: spacing.lg },
+    forgotRow: { alignItems: 'flex-end', marginTop: -spacing.xs },
+    forgotText: { ...typography.bodySmall, color: colors.primary },
   }), [colors]);
 
   return (
@@ -187,6 +189,9 @@ export default function LoginScreen() {
                 placeholder="Enter password"
                 secureTextEntry
               />
+              <TouchableOpacity style={styles.forgotRow} onPress={() => router.push('/forgot-password')}>
+                <Text style={styles.forgotText}>Forgot Password?</Text>
+              </TouchableOpacity>
               <Button
                 title="Login"
                 onPress={handleLogin}

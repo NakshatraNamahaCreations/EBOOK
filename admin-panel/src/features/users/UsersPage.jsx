@@ -109,21 +109,30 @@ export const UsersPage = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser] = useState(null);
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      const params = { page, limit: 15 };
-      if (search) params.search = search;
-      if (roleFilter) params.role = roleFilter;
-      const res = await api.get('/admin/users', { params });
-      setUsers(res.data || []);
-      setPagination(res.pagination || null);
-    } catch {
-      setUsers([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  console.log("users",users)
+
+const fetchUsers = async () => {
+  setLoading(true);
+  try {
+    const params = {
+      page: 1,
+      limit: 15,
+     
+    };
+
+    if (search) params.search = search;
+
+    const res = await api.get("/admin/users/admins", { params });
+
+    setUsers(res?.data?.data || res?.data?.users || res?.data || []);
+    setPagination(res?.data?.pagination || null);
+  } catch (error) {
+    console.error("fetchUsers error:", error);
+    setUsers([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => { fetchUsers(); }, [page, roleFilter]);
   useEffect(() => {

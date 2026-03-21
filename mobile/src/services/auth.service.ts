@@ -47,6 +47,21 @@ export const authService = {
     return response.data as import('../types').User;
   },
 
+  async forgotPasswordOTP(email: string): Promise<{ message: string; expiresIn: number; otp?: string }> {
+    const response = await api.post('/auth/forgot-password-otp', { email });
+    return response.data;
+  },
+
+  async verifyForgotPasswordOTP(email: string, otp: string): Promise<{ message: string; resetToken: string }> {
+    const response = await api.post('/auth/verify-forgot-password-otp', { email, otp });
+    return response.data;
+  },
+
+  async resetPassword(token: string, password: string): Promise<{ message: string }> {
+    const response = await api.post('/auth/reset-password', { token, password });
+    return response.data;
+  },
+
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
     await api.post('/auth/change-password', { currentPassword, newPassword });
   },
