@@ -1,6 +1,10 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { contentService } from '../../services/content.service';
 import { Content, Banner, Progress } from '../../types';
+
+const HOME_CACHE_KEY = '@ebook_home_data';
+const HOME_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 interface ContentState {
   banners: Banner[];
@@ -26,7 +30,21 @@ const initialState: ContentState = {
   error: null,
 };
 
-export const fetchHomeData = createAsyncThunk('content/fetchHomeData', async () => {
+export const fetchHomeData = createAsyncThunk('content/fetchHomeData', async (forceRefresh?: boolean) => {
+  // Return cached data if it's fresh (unless user explicitly pulls to refresh)
+  if (!forceRefresh) {
+    try {
+      const raw = await AsyncStorage.getItem(HOME_CACHE_KEY);
+      if (raw) {
+        const { data, ts } = JSON.parse(raw);
+        if (Date.now() - ts < HOME_CACHE_TTL) {
+          return data; // instant — no network calls
+        }
+      }
+    } catch {}
+  }
+
+  // Fetch fresh data from network
   const [banners, allBooks, trendingAudiobooks, trendingPodcasts] =
     await Promise.all([
       contentService.getBanners(),
@@ -35,7 +53,6 @@ export const fetchHomeData = createAsyncThunk('content/fetchHomeData', async () 
       contentService.getContent({ content_type: 'podcast' as any, limit: 10 }),
     ]);
 
-  // Filter by book_content_type to cleanly separate ebooks from audiobooks
   const trendingBooks = allBooks.filter(
     (b: any) => !b.book_content_type || b.book_content_type === 'ebook'
   ).slice(0, 10);
@@ -44,7 +61,14 @@ export const fetchHomeData = createAsyncThunk('content/fetchHomeData', async () 
     (b: any) => b.book_content_type === 'audiobook' || b.content_type === 'audiobook'
   );
 
-  return { banners, trendingBooks, trendingAudiobooks: trendingAudiobooksFiltered, trendingPodcasts };
+  const result = { banners, trendingBooks, trendingAudiobooks: trendingAudiobooksFiltered, trendingPodcasts };
+
+  // Save to cache with timestamp
+  try {
+    await AsyncStorage.setItem(HOME_CACHE_KEY, JSON.stringify({ data: result, ts: Date.now() }));
+  } catch {}
+
+  return result;
 });
 
 export const fetchLibrary = createAsyncThunk('content/fetchLibrary', async (userId: string) => {

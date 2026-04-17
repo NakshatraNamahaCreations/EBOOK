@@ -1,18 +1,35 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import authReducer from './slices/authSlice';
 import contentReducer from './slices/contentSlice';
 
+// Safe storage wrapper: prevents "window is not defined" during SSR on web
+const safeStorage = {
+  getItem: async (key: string) => {
+    if (Platform.OS === 'web' && typeof window === 'undefined') return null;
+    return AsyncStorage.getItem(key);
+  },
+  setItem: async (key: string, value: string) => {
+    if (Platform.OS === 'web' && typeof window === 'undefined') return;
+    return AsyncStorage.setItem(key, value);
+  },
+  removeItem: async (key: string) => {
+    if (Platform.OS === 'web' && typeof window === 'undefined') return;
+    return AsyncStorage.removeItem(key);
+  },
+};
+
 const authPersistConfig = {
   key: 'auth',
-  storage: AsyncStorage,
+  storage: safeStorage,
   whitelist: ['user', 'token', 'isAuthenticated'],
 };
 
 const contentPersistConfig = {
   key: 'content',
-  storage: AsyncStorage,
+  storage: safeStorage,
   whitelist: ['library', 'wishlist', 'progress'],
 };
 

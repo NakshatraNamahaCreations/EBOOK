@@ -44,6 +44,7 @@ export interface Chapter {
   audio_url?: string;
   youtube_id?: string;
   thumbnail?: string;
+  chapter_image?: string;
   is_free?: boolean;
   coin_cost?: number;
   description?: string;

@@ -45,7 +45,7 @@ export default function HelpScreen() {
   const { colors } = useTheme();
 
   const openEmail = () =>
-    Linking.openURL('mailto:support@saliljaveri.app').catch(() =>
+    Linking.openURL('mailto:saliljaveri.app').catch(() =>
       Alert.alert('Error', 'Unable to open email app.')
     );
 
@@ -53,7 +53,7 @@ export default function HelpScreen() {
     Alert.alert('Live Chat', 'Live chat support will be available in a future update. Please email us for now.');
 
   const openPhone = () =>
-    Linking.openURL('tel:+911800000000').catch(() =>
+    Linking.openURL('tel:+918879629404').catch(() =>
       Alert.alert('Error', 'Unable to open phone app.')
     );
 
@@ -92,7 +92,7 @@ export default function HelpScreen() {
             </View>
             <View style={styles.contactText}>
               <Text style={styles.contactTitle}>Email Support</Text>
-              <Text style={styles.contactSub}>support@saliljaveri.app</Text>
+              <Text style={styles.contactSub}>saliljaveri27@gmail.com</Text>
             </View>
           </TouchableOpacity>
 
@@ -112,7 +112,7 @@ export default function HelpScreen() {
             </View>
             <View style={styles.contactText}>
               <Text style={styles.contactTitle}>Phone Support</Text>
-              <Text style={styles.contactSub}>1800-000-0000 (Toll free)</Text>
+              <Text style={styles.contactSub}>88796 29404</Text>
             </View>
           </TouchableOpacity>
         </View>

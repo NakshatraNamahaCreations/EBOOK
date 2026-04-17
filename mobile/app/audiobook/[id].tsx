@@ -10,6 +10,7 @@ import {
   Modal,
   ActivityIndicator,
   Platform,
+  TextInput,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +27,7 @@ import { LoadingScreen } from '../../src/components/layout/LoadingScreen';
 import { Button } from '../../src/components/buttons/Button';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { ReviewSection } from '../../src/components/ReviewSection';
+import { useAudioPlayer } from '../../src/context/AudioPlayerContext';
 
 let WebView: any = null;
 if (Platform.OS !== 'web') {
@@ -40,16 +42,7 @@ interface RazorpayOrder {
   book_title: string;
 }
 
-function formatDuration(seconds?: number): string {
-  if (!seconds) return 'N/A';
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  return `${hours}h ${minutes}m`;
-}
 
-function calcTotalDuration(chapters: { duration?: number }[]): number {
-  return chapters.reduce((sum, ch) => sum + (ch.duration || 0), 0);
-}
 
 export default function AudiobookDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -59,12 +52,19 @@ export default function AudiobookDetailScreen() {
   const { user } = useAppSelector((state) => state.auth);
   const wishlist = useAppSelector((state) => state.content.wishlist);
 
+  const { trackInfo, isPlaying: ctxIsPlaying } = useAudioPlayer();
+
   const [audiobook, setAudiobook] = useState<Content | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPurchased, setIsPurchased] = useState(false);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [showRazorpay, setShowRazorpay] = useState(false);
   const [razorpayOrder, setRazorpayOrder] = useState<RazorpayOrder | null>(null);
+
+  // Coupon
+  const [couponInput, setCouponInput] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number; finalAmount: number; description: string } | null>(null);
 
   const inWishlist = wishlist.some((item) => item.id === id);
 
@@ -143,11 +143,32 @@ export default function AudiobookDetailScreen() {
     });
   };
 
+  const handleApplyCoupon = async () => {
+    if (!audiobook || !couponInput.trim()) return;
+    const price = audiobook.price_inr ?? 0;
+    setCouponLoading(true);
+    try {
+      const res = await paymentService.validateCoupon(couponInput.trim(), id, 'audiobook', price);
+      const data = res.data || res;
+      setAppliedCoupon({
+        code: data.code,
+        discountAmount: data.discountAmount,
+        finalAmount: data.finalAmount,
+        description: data.description || '',
+      });
+      setCouponInput('');
+    } catch (err: any) {
+      Alert.alert('Invalid Coupon', err?.message || 'This coupon is not valid');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
   const handleBuy = async () => {
     if (!audiobook) return;
     setPurchaseLoading(true);
     try {
-      const order = await paymentService.createBookOrder(id, 'audiobook');
+      const order = await paymentService.createBookOrder(id, 'audiobook', appliedCoupon?.code);
       if (order.already_purchased) {
         setIsPurchased(true);
         return;
@@ -266,6 +287,45 @@ export default function AudiobookDetailScreen() {
     buyButton: { flex: 1, backgroundColor: '#F59E0B', borderRadius: 12, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
     buyButtonText: { ...typography.body, color: '#fff', fontWeight: 'bold' as const, fontSize: 16 },
     iconButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+    couponRow: { flexDirection: 'row' as const, gap: 8, width: '100%' },
+    couponInput: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: '#d1d5db',
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 14,
+      color: colors.text,
+      backgroundColor: colors.backgroundCard,
+      letterSpacing: 1,
+    },
+    couponApplyBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: 10,
+      paddingHorizontal: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    couponApplyText: { color: '#fff', fontWeight: 'bold' as const, fontSize: 14 },
+    couponApplied: {
+      flexDirection: 'row' as const,
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: '#f0fdf4',
+      borderWidth: 1,
+      borderColor: '#bbf7d0',
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      width: '100%',
+    },
+    couponAppliedLeft: { flexDirection: 'row' as const, alignItems: 'center', gap: 6 },
+    couponAppliedCode: { fontWeight: 'bold' as const, fontSize: 13, color: '#16a34a' },
+    couponAppliedSaving: { fontSize: 13, color: '#16a34a' },
+    priceSummary: { flexDirection: 'row' as const, alignItems: 'center', gap: 10, paddingHorizontal: 4, width: '100%' },
+    priceOriginal: { fontSize: 15, color: '#9ca3af', textDecorationLine: 'line-through' as const },
+    priceFinal: { fontSize: 18, fontWeight: 'bold' as const, color: colors.text },
     section: { paddingHorizontal: spacing.md, marginBottom: spacing.lg },
     sectionTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.md },
     description: { ...typography.body, color: colors.textSecondary, lineHeight: 24 },
@@ -276,8 +336,13 @@ export default function AudiobookDetailScreen() {
     chapterOrder: { ...typography.body, color: colors.primary, fontWeight: 'bold' as const, width: 40 },
     chapterInfo: { flex: 1 },
     chapterTitle: { ...typography.body, color: colors.text, marginBottom: 2 },
-    chapterDuration: { ...typography.caption, color: colors.textSecondary },
     chapterPlayBtn: { width: 40, alignItems: 'center', justifyContent: 'center' },
+    chapterItemActive: { backgroundColor: colors.primary + '18', borderRadius: 10, paddingHorizontal: spacing.sm },
+    chapterTitleActive: { color: colors.primary, fontWeight: '600' as const },
+    nowPlayingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+    nowPlayingDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary },
+    nowPlayingText: { ...typography.caption, color: colors.primary, fontWeight: '600' as const },
+    pausedText: { ...typography.caption, color: colors.textMuted },
     errorContainer: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
     errorText: { ...typography.h3, color: colors.textSecondary },
     modalContainer: { flex: 1, backgroundColor: '#000' },
@@ -324,10 +389,6 @@ export default function AudiobookDetailScreen() {
             )}
             <View style={styles.meta}>
               <View style={styles.metaItem}>
-                <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
-                <Text style={styles.metaText}>{formatDuration(calcTotalDuration(audiobook.chapters))}</Text>
-              </View>
-              <View style={styles.metaItem}>
                 <Ionicons name="star" size={16} color={colors.accent} />
                 <Text style={styles.ratingText}>{(audiobook.rating ?? 0).toFixed(1)}</Text>
               </View>
@@ -344,26 +405,83 @@ export default function AudiobookDetailScreen() {
           </View>
         </View>
 
-        <View style={styles.actions}>
+        <View style={[styles.actions, isFreeOrPurchased ? { flexDirection: 'row', alignItems: 'center' } : { flexDirection: 'column' }]}>
           {isFreeOrPurchased ? (
-            <Button title="Play Now" onPress={() => handlePlay(0)} style={styles.mainButton} />
+            <>
+              <Button title="Play Now" onPress={() => handlePlay(0)} style={styles.mainButton} />
+              <TouchableOpacity style={styles.iconButton} onPress={handleWishlist}>
+                <Ionicons name={inWishlist ? 'heart' : 'heart-outline'} size={32} color={colors.primary} />
+              </TouchableOpacity>
+            </>
           ) : (
-            <TouchableOpacity
-              style={styles.buyButton}
-              onPress={handleBuy}
-              disabled={purchaseLoading}
-              activeOpacity={0.85}
-            >
-              {purchaseLoading ? (
-                <ActivityIndicator color="#fff" />
+            <>
+              {/* Coupon input */}
+              {!appliedCoupon ? (
+                <View style={styles.couponRow}>
+                  <TextInput
+                    style={styles.couponInput}
+                    placeholder="Enter coupon code"
+                    placeholderTextColor="#999"
+                    value={couponInput}
+                    onChangeText={t => setCouponInput(t)}
+                    autoCapitalize="none"
+                    returnKeyType="done"
+                    onSubmitEditing={handleApplyCoupon}
+                  />
+                  <TouchableOpacity
+                    style={styles.couponApplyBtn}
+                    onPress={handleApplyCoupon}
+                    disabled={couponLoading || !couponInput.trim()}
+                    activeOpacity={0.8}
+                  >
+                    {couponLoading
+                      ? <ActivityIndicator color="#fff" size="small" />
+                      : <Text style={styles.couponApplyText}>Apply</Text>}
+                  </TouchableOpacity>
+                </View>
               ) : (
-                <Text style={styles.buyButtonText}>Buy ₹{audiobook.price_inr ?? 0}</Text>
+                <View style={styles.couponApplied}>
+                  <View style={styles.couponAppliedLeft}>
+                    <Ionicons name="pricetag" size={14} color="#16a34a" />
+                    <Text style={styles.couponAppliedCode}>{appliedCoupon.code}</Text>
+                    <Text style={styles.couponAppliedSaving}>-₹{appliedCoupon.discountAmount}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setAppliedCoupon(null)}>
+                    <Ionicons name="close-circle" size={18} color="#999" />
+                  </TouchableOpacity>
+                </View>
               )}
-            </TouchableOpacity>
+
+              {/* Price summary */}
+              {appliedCoupon && (
+                <View style={styles.priceSummary}>
+                  <Text style={styles.priceOriginal}>₹{audiobook.price_inr ?? 0}</Text>
+                  <Text style={styles.priceFinal}>₹{appliedCoupon.finalAmount}</Text>
+                </View>
+              )}
+
+              {/* Buy button row with wishlist */}
+              <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center', width: '100%' }}>
+                <TouchableOpacity
+                  style={[styles.buyButton, { flex: 1 }]}
+                  onPress={handleBuy}
+                  disabled={purchaseLoading}
+                  activeOpacity={0.85}
+                >
+                  {purchaseLoading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.buyButtonText}>
+                      Buy ₹{appliedCoupon ? appliedCoupon.finalAmount : (audiobook.price_inr ?? 0)}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }} onPress={handleWishlist}>
+                  <Ionicons name={inWishlist ? 'heart' : 'heart-outline'} size={32} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            </>
           )}
-          <TouchableOpacity style={styles.iconButton} onPress={handleWishlist}>
-            <Ionicons name={inWishlist ? 'heart' : 'heart-outline'} size={32} color={colors.primary} />
-          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
@@ -378,10 +496,6 @@ export default function AudiobookDetailScreen() {
             <Text style={styles.detailValue}>{audiobook.language}</Text>
           </View>
           <View style={styles.detail}>
-            <Text style={styles.detailLabel}>Duration</Text>
-            <Text style={styles.detailValue}>{formatDuration(calcTotalDuration(audiobook.chapters))}</Text>
-          </View>
-          <View style={styles.detail}>
             <Text style={styles.detailLabel}>Chapters</Text>
             <Text style={styles.detailValue}>{audiobook.chapters.length}</Text>
           </View>
@@ -390,39 +504,61 @@ export default function AudiobookDetailScreen() {
         {audiobook.chapters.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Chapters</Text>
-            {audiobook.chapters.map((chapter, index) => (
-              <TouchableOpacity
-                key={chapter.id}
-                style={styles.chapterItem}
-                onPress={() => {
-                  if (isPaid) {
-                    Alert.alert('Purchase Required', `Buy this audiobook for ₹${audiobook.price_inr ?? 0} to listen.`, [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: `Buy ₹${audiobook.price_inr ?? 0}`, onPress: handleBuy },
-                    ]);
-                  } else {
-                    handlePlay(index);
-                  }
-                }}
-                activeOpacity={0.7}
-                disabled={purchaseLoading}
-              >
-                <Text style={styles.chapterOrder}>{chapter.order}</Text>
-                <View style={styles.chapterInfo}>
-                  <Text style={styles.chapterTitle}>{chapter.title}</Text>
-                  {chapter.duration && (
-                    <Text style={styles.chapterDuration}>{formatDuration(chapter.duration)}</Text>
-                  )}
-                </View>
-                <View style={styles.chapterPlayBtn}>
-                  {isFreeOrPurchased ? (
-                    <Ionicons name="play-circle" size={32} color={colors.primary} />
-                  ) : (
-                    <Ionicons name="lock-closed" size={20} color={colors.textMuted} />
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))}
+            {audiobook.chapters.map((chapter, index) => {
+              const isActive = trackInfo?.bookId === audiobook.id && trackInfo?.chapterIndex === index;
+              const isThisPlaying = isActive && ctxIsPlaying;
+              const isThisPaused = isActive && !ctxIsPlaying;
+
+              return (
+                <TouchableOpacity
+                  key={chapter.id}
+                  style={[styles.chapterItem, isActive && styles.chapterItemActive]}
+                  onPress={() => {
+                    if (isPaid) {
+                      Alert.alert('Purchase Required', `Buy this audiobook for ₹${audiobook.price_inr ?? 0} to listen.`, [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: `Buy ₹${audiobook.price_inr ?? 0}`, onPress: handleBuy },
+                      ]);
+                    } else {
+                      handlePlay(index);
+                    }
+                  }}
+                  activeOpacity={0.7}
+                  disabled={purchaseLoading}
+                >
+                  <Text style={[styles.chapterOrder, isActive && { color: colors.primary }]}>
+                    {chapter.order}
+                  </Text>
+                  <View style={styles.chapterInfo}>
+                    <Text style={[styles.chapterTitle, isActive && styles.chapterTitleActive]}>
+                      {chapter.title}
+                    </Text>
+                    {isThisPlaying && (
+                      <View style={styles.nowPlayingBadge}>
+                        <View style={styles.nowPlayingDot} />
+                        <Text style={styles.nowPlayingText}>Now Playing</Text>
+                      </View>
+                    )}
+                    {isThisPaused && (
+                      <Text style={styles.pausedText}>⏸ Paused</Text>
+                    )}
+                  </View>
+                  <View style={styles.chapterPlayBtn}>
+                    {isFreeOrPurchased ? (
+                      isThisPlaying ? (
+                        <Ionicons name="pause-circle" size={32} color={colors.primary} />
+                      ) : isThisPaused ? (
+                        <Ionicons name="play-circle" size={32} color={colors.textSecondary} />
+                      ) : (
+                        <Ionicons name="play-circle" size={32} color={colors.primary} />
+                      )
+                    ) : (
+                      <Ionicons name="lock-closed" size={20} color={colors.textMuted} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
 

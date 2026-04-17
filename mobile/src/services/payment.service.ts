@@ -1,8 +1,12 @@
 import api from './api';
 
 export const paymentService = {
-  async createBookOrder(bookId: string, purchaseType: 'ebook' | 'audiobook' | 'combo' = 'ebook') {
-    const res = await api.post(`/reader/books/${bookId}/purchase`, { purchaseType });
+  async createBookOrder(bookId: string, purchaseType: 'ebook' | 'audiobook' | 'combo' = 'ebook', couponCode?: string) {
+    const res = await api.post(`/reader/books/${bookId}/purchase`, { purchaseType, ...(couponCode ? { couponCode } : {}) });
+    return res.data as any;
+  },
+  async validateCoupon(code: string, bookId: string, purchaseType: string, amount: number) {
+    const res = await api.post('/reader/coupons/validate', { code, bookId, purchaseType, amount });
     return res.data as any;
   },
   async verifyPayment(

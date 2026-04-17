@@ -8,7 +8,6 @@ import {
   Alert,
   Modal,
   ScrollView,
-  PanResponder,
   Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -32,13 +31,6 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-function formatDuration(seconds?: number): string {
-  if (!seconds) return '';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
 export default function PlayerScreen() {
   const { id, chapterIndex } = useLocalSearchParams<{ id: string; chapterIndex?: string }>();
   const router = useRouter();
@@ -55,14 +47,47 @@ export default function PlayerScreen() {
 
   const chaptersRef = useRef<Chapter[]>([]);
   const audiobookRef = useRef<Content | null>(null);
+  // Preloaded next-chapter sound + its index, so "next" feels instant
+  const preloadRef = useRef<{ sound: any; index: number } | null>(null);
+  // Incremented on every loadChapter call so stale async work can abort itself
+  const loadGenRef = useRef(0);
+
+  const preloadNextChapter = async (nextIndex: number) => {
+    const chapters = chaptersRef.current;
+    const ch = chapters[nextIndex];
+    if (!ch?.audio_url) return;
+    // Skip if already preloaded for this index
+    if (preloadRef.current?.index === nextIndex) return;
+    // Drop any previous preload
+    if (preloadRef.current) {
+      const old = preloadRef.current.sound;
+      preloadRef.current = null;
+      old?.unloadAsync?.().catch(() => {});
+    }
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: ch.audio_url },
+        { shouldPlay: false }
+      );
+      preloadRef.current = { sound, index: nextIndex };
+    } catch {
+      preloadRef.current = null;
+    }
+  };
 
   useEffect(() => {
     loadAudiobook();
     return () => {
       // On unmount: detach status callback so no React state updates happen
-      // Do NOT unload — sound keeps playing via context
+      // Do NOT unload current sound — it keeps playing via context
       if (soundRef.current) {
         soundRef.current.setOnPlaybackStatusUpdate(null);
+      }
+      // Drop any preloaded next chapter
+      if (preloadRef.current) {
+        const s = preloadRef.current.sound;
+        preloadRef.current = null;
+        s?.unloadAsync?.().catch(() => {});
       }
     };
   }, [id]);
@@ -125,9 +150,12 @@ export default function PlayerScreen() {
           bookId: id,
           bookTitle: data.title,
           chapterTitle: chapter.title,
-          coverImage: data.cover_image,
+          coverImage: chapter.chapter_image || data.cover_image,
           chapterIndex: startIndex,
         });
+
+        // Start preloading the next chapter in the background
+        preloadNextChapter(startIndex + 1);
       } else {
         setDuration(data.duration || 0);
       }
@@ -142,21 +170,56 @@ export default function PlayerScreen() {
     const chapter = chapters[index];
     if (!chapter?.audio_url) return;
 
-    // Stop and unload previous
-    if (soundRef.current) {
-      soundRef.current.setOnPlaybackStatusUpdate(null);
-      try { await soundRef.current.stopAsync(); } catch {}
-      try { await soundRef.current.unloadAsync(); } catch {}
-      soundRef.current = null;
-    }
+    // Generation guard — if another loadChapter starts after this one, abort here
+    const myGen = ++loadGenRef.current;
+    const isStale = () => loadGenRef.current !== myGen;
+
+    // Update UI immediately so the user sees the new chapter right away
+    chapterIdxRef.current = index;
+    setCurrentChapterIdx(index);
     setCurrentTime(0);
     setDuration(chapter.duration || 0);
     setIsPlaying(false);
+    const ab = audiobookRef.current;
+    if (ab) {
+      setTrackInfo({
+        bookId: id,
+        bookTitle: ab.title,
+        chapterTitle: chapter.title,
+        coverImage: chapter.chapter_image || ab.cover_image,
+        chapterIndex: index,
+      });
+    }
 
-    const { sound: newSound } = await Audio.Sound.createAsync(
-      { uri: chapter.audio_url },
-      { shouldPlay: true }
-    );
+    // Detach and pause old sound synchronously; unload in background
+    const oldSound = soundRef.current;
+    soundRef.current = null;
+    if (oldSound) {
+      oldSound.setOnPlaybackStatusUpdate(null);
+      try { await oldSound.pauseAsync(); } catch {}
+      oldSound.unloadAsync().catch(() => {});
+    }
+
+    if (isStale()) return;
+
+    // Use preloaded sound if available, otherwise create a new one
+    let newSound: any;
+    if (preloadRef.current?.index === index) {
+      newSound = preloadRef.current.sound;
+      preloadRef.current = null;
+      if (isStale()) { newSound.unloadAsync?.().catch(() => {}); return; }
+      try { await newSound.playAsync(); } catch {}
+    } else {
+      const created = await Audio.Sound.createAsync(
+        { uri: chapter.audio_url },
+        { shouldPlay: false }
+      );
+      newSound = created.sound;
+      if (isStale()) { newSound.unloadAsync?.().catch(() => {}); return; }
+      try { await newSound.playAsync(); } catch {}
+    }
+
+    if (isStale()) { newSound.unloadAsync?.().catch(() => {}); return; }
 
     newSound.setOnPlaybackStatusUpdate((status) => {
       if (!status.isLoaded) return;
@@ -173,21 +236,10 @@ export default function PlayerScreen() {
     });
 
     soundRef.current = newSound;
-    chapterIdxRef.current = index;
-    setCurrentChapterIdx(index);
-
-    // Update global mini-player info
-    const ab = audiobookRef.current;
-    if (ab) {
-      setTrackInfo({
-        bookId: id,
-        bookTitle: ab.title,
-        chapterTitle: chapter.title,
-        coverImage: ab.cover_image,
-        chapterIndex: index,
-      });
-    }
     setCtxIsPlaying(true);
+
+    // Kick off preload for the chapter after this one
+    preloadNextChapter(index + 1);
   };
 
   const goToChapter = (index: number) => {
@@ -196,17 +248,6 @@ export default function PlayerScreen() {
     if (!chapters[index]?.audio_url) return;
     loadChapter(chapters, index);
   };
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gs) =>
-        Math.abs(gs.dx) > 20 && Math.abs(gs.dy) < 60,
-      onPanResponderRelease: (_, gs) => {
-        if (gs.dx < -50) goToChapter(chapterIdxRef.current + 1);
-        else if (gs.dx > 50) goToChapter(chapterIdxRef.current - 1);
-      },
-    })
-  ).current;
 
   const togglePlayback = async () => {
     if (!soundRef.current) {
@@ -269,12 +310,14 @@ export default function PlayerScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Cover Art */}
-      <View style={styles.coverWrapper} {...panResponder.panHandlers}>
+      {/* Cover Art — chapter image if present, else book cover */}
+      <View style={styles.coverWrapper}>
         <View style={styles.coverShadow}>
           <Image
             source={
-              audiobook.cover_image
+              currentChapter?.chapter_image
+                ? { uri: currentChapter.chapter_image }
+                : audiobook.cover_image
                 ? { uri: audiobook.cover_image }
                 : require('../../assets/images/icon.png')
             }
@@ -331,14 +374,11 @@ export default function PlayerScreen() {
         {/* Prev chapter */}
         <TouchableOpacity
           onPress={() => goToChapter(currentChapterIdx - 1)}
-          style={styles.navBtn}
+          style={[styles.navBtn, currentChapterIdx === 0 && styles.navBtnDisabled]}
           disabled={currentChapterIdx === 0}
+          activeOpacity={0.7}
         >
-          <Ionicons
-            name="play-skip-back"
-            size={30}
-            color={currentChapterIdx === 0 ? colors.textDim : colors.text}
-          />
+          <Ionicons name="play-skip-back" size={28} color="#FFFFFF" />
         </TouchableOpacity>
 
         {/* Play / Pause */}
@@ -349,14 +389,11 @@ export default function PlayerScreen() {
         {/* Next chapter */}
         <TouchableOpacity
           onPress={() => goToChapter(currentChapterIdx + 1)}
-          style={styles.navBtn}
+          style={[styles.navBtn, currentChapterIdx >= totalChapters - 1 && styles.navBtnDisabled]}
           disabled={currentChapterIdx >= totalChapters - 1}
+          activeOpacity={0.7}
         >
-          <Ionicons
-            name="play-skip-forward"
-            size={30}
-            color={currentChapterIdx >= totalChapters - 1 ? colors.textDim : colors.text}
-          />
+          <Ionicons name="play-skip-forward" size={28} color="#FFFFFF" />
         </TouchableOpacity>
 
         {/* Skip forward */}
@@ -407,9 +444,6 @@ export default function PlayerScreen() {
                     <Text style={[styles.chapterRowTitle, !ch.audio_url && styles.chapterRowDisabled]}>
                       {ch.title}
                     </Text>
-                    {ch.duration ? (
-                      <Text style={styles.chapterRowDuration}>{formatDuration(ch.duration)}</Text>
-                    ) : null}
                   </View>
                   {ch.audio_url ? (
                     <Ionicons
@@ -594,10 +628,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   navBtn: {
-    width: 48,
-    height: 48,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.backgroundElevated,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  navBtnDisabled: {
+    opacity: 0.35,
   },
   playButton: {
     width: 72,
@@ -722,10 +763,5 @@ const styles = StyleSheet.create({
   },
   chapterRowDisabled: {
     color: colors.textDim,
-  },
-  chapterRowDuration: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 2,
   },
 });

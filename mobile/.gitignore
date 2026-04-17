@@ -21,6 +21,8 @@ expo-env.d.ts
 # Metro
 .metro-health-check*
 .metro-cache/
+credentials/
+
 
 # debug
 npm-debug.*

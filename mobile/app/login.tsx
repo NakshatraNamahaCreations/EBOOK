@@ -22,7 +22,7 @@ import { spacing } from '../src/theme/spacing';
 type Tab = 'login' | 'signup';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_REGEX = /^[+]?[\d\s\-()]{10,15}$/;
+const PHONE_REGEX = /^\d{10}$/;
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -73,7 +73,7 @@ export default function LoginScreen() {
 
     if (!name.trim()) { setFormError('Full name is required'); return; }
     if (!phone.trim()) { setFormError('Phone number is required'); return; }
-    if (!PHONE_REGEX.test(phone.trim())) { setFormError('Please enter a valid phone number (10-15 digits)'); return; }
+    if (!PHONE_REGEX.test(phone.trim())) { setFormError('Please enter a valid 10-digit mobile number'); return; }
     if (!email.trim()) { setFormError('Email address is required'); return; }
     if (!EMAIL_REGEX.test(email.trim())) { setFormError('Please enter a valid email address'); return; }
     if (!signupPassword) { setFormError('Password is required'); return; }
@@ -212,10 +212,10 @@ export default function LoginScreen() {
               <TextInput
                 label="Phone Number *"
                 value={phone}
-                onChangeText={(v) => { setPhone(v); setFormError(''); }}
-                placeholder="10-digit mobile number"
-                keyboardType="phone-pad"
-                maxLength={15}
+                onChangeText={(v) => { setPhone(v.replace(/\D/g, '').slice(0, 10)); setFormError(''); }}
+                placeholder="Enter 10-digit mobile number"
+                keyboardType="number-pad"
+                maxLength={10}
               />
               <TextInput
                 label="Email Address *"

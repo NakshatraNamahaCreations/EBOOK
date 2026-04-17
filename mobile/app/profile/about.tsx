@@ -21,7 +21,7 @@ export default function AboutScreen() {
   const { colors } = useTheme();
 
   const openWebsite = () =>
-    Linking.openURL('https://saliljaveri.app').catch(() =>
+    Linking.openURL('https://saliljaveri.com').catch(() =>
       Alert.alert('Error', 'Unable to open website.')
     );
 

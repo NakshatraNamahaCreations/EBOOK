@@ -2,8 +2,8 @@ import axios from 'axios';
 import { storage } from '../utils/storage';
 
 // Get backend URL — validate it's a proper absolute URL
-const rawUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-const BACKEND_URL = rawUrl.startsWith('http') ? rawUrl : 'http://192.168.1.71:5001';
+const rawUrl = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://api.saliljaveri.com';
+const BACKEND_URL = rawUrl.startsWith('http') ? rawUrl : 'https://api.saliljaveri.com';
 
 console.log('API Base URL:', BACKEND_URL);
 

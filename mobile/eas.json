@@ -6,12 +6,18 @@
   "build": {
     "apk": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_BACKEND_URL": "https://api.saliljaveri.com"
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
       "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_BACKEND_URL": "https://api.saliljaveri.com"
+      },
       "android": {
         "buildType": "app-bundle"
       }

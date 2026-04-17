@@ -10,7 +10,8 @@
       "Bash(grep -rn '\\\\$[0-9]' d:/Yogesh/E-BOOK/mobile/ --include=\"*.tsx\" --include=\"*.ts\")",
       "Bash(node -e \"const m = require\\(''multer-s3''\\); console.log\\(''AUTO_CONTENT_TYPE:'', m.AUTO_CONTENT_TYPE\\); console.log\\(''version:'', require\\(''./node_modules/multer-s3/package.json''\\).version\\)\")",
       "Bash(npx vite:*)",
-      "Bash(node -e \":*)"
+      "Bash(node -e \":*)",
+      "Bash(find /d/Yogesh/EBOOK -type f -name *chapter* -o -name *Chapter*)"
     ],
     "additionalDirectories": [
       "d:\\Yogesh\\E-BOOK\\mobile\\app\\book"

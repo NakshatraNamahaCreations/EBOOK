@@ -9,6 +9,7 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { Platform } from 'react-native';
 // WebView is only available on native — conditionally imported below
@@ -57,6 +58,11 @@ export default function BookDetailScreen() {
   const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [showRazorpay, setShowRazorpay] = useState(false);
   const [razorpayOrder, setRazorpayOrder] = useState<RazorpayOrder | null>(null);
+
+  // Coupon
+  const [couponInput, setCouponInput] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number; finalAmount: number; description: string } | null>(null);
 
   const inWishlist = wishlist.some((item) => item.id === id);
 
@@ -182,11 +188,34 @@ export default function BookDetailScreen() {
     });
   };
 
+  const handleApplyCoupon = async () => {
+    if (!book || !couponInput.trim()) return;
+    const price = book.price_inr ?? 0;
+    setCouponLoading(true);
+    try {
+      const pType = book.book_content_type === 'audiobook' ? 'audiobook' : 'ebook';
+      const res = await paymentService.validateCoupon(couponInput.trim(), id, pType, price);
+      const data = res.data || res;
+      setAppliedCoupon({
+        code: data.code,
+        discountAmount: data.discountAmount,
+        finalAmount: data.finalAmount,
+        description: data.description || '',
+      });
+      setCouponInput('');
+    } catch (err: any) {
+      Alert.alert('Invalid Coupon', err?.message || 'This coupon is not valid');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
   const handleBuy = async () => {
     if (!book) return;
     setPurchaseLoading(true);
     try {
-      const order = await paymentService.createBookOrder(id);
+      const pType = book.book_content_type === 'audiobook' ? 'audiobook' : 'ebook';
+      const order = await paymentService.createBookOrder(id, pType, appliedCoupon?.code);
       if (order.already_purchased) {
         setIsPurchased(true);
         return;
@@ -423,11 +452,10 @@ export default function BookDetailScreen() {
     reviewsText: { ...typography.bodySmall, color: colors.textSecondary, marginLeft: 4 },
     accessBadge: { backgroundColor: colors.primary, paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: 6 },
     accessText: { ...typography.caption, color: '#fff', fontWeight: 'bold' as const },
-    actions: { flexDirection: 'row', paddingHorizontal: spacing.md, gap: spacing.md, marginBottom: spacing.lg, alignItems: 'center' },
-    mainButton: { flex: 1 },
-    iconButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+    actions: { paddingHorizontal: spacing.md, marginBottom: spacing.lg, gap: spacing.sm },
+    mainButton: {},
+    iconButton: { position: 'absolute' as const, right: spacing.md, bottom: 0, width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
     buyButton: {
-      flex: 1,
       backgroundColor: '#F59E0B',
       borderRadius: 12,
       paddingVertical: 14,
@@ -435,6 +463,44 @@ export default function BookDetailScreen() {
       justifyContent: 'center',
     },
     buyButtonText: { ...typography.body, color: '#fff', fontWeight: 'bold' as const, fontSize: 16 },
+    couponRow: { flexDirection: 'row' as const, gap: 8 },
+    couponInput: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: '#d1d5db',
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 14,
+      color: colors.text,
+      backgroundColor: colors.surface,
+      letterSpacing: 1,
+    },
+    couponApplyBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: 10,
+      paddingHorizontal: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    couponApplyText: { color: '#fff', fontWeight: 'bold' as const, fontSize: 14 },
+    couponApplied: {
+      flexDirection: 'row' as const,
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: '#f0fdf4',
+      borderWidth: 1,
+      borderColor: '#bbf7d0',
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    couponAppliedLeft: { flexDirection: 'row' as const, alignItems: 'center', gap: 6 },
+    couponAppliedCode: { fontWeight: 'bold' as const, fontSize: 13, color: '#16a34a' },
+    couponAppliedSaving: { fontSize: 13, color: '#16a34a' },
+    priceSummary: { flexDirection: 'row' as const, alignItems: 'center', gap: 10, paddingHorizontal: 4 },
+    priceOriginal: { fontSize: 15, color: '#9ca3af', textDecorationLine: 'line-through' as const },
+    priceFinal: { fontSize: 18, fontWeight: 'bold' as const, color: colors.text },
     section: { paddingHorizontal: spacing.md, marginBottom: spacing.lg },
     sectionTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.md },
     description: { ...typography.body, color: colors.textSecondary, lineHeight: 24 },
@@ -529,22 +595,79 @@ export default function BookDetailScreen() {
               style={styles.mainButton}
             />
           ) : (
-            <TouchableOpacity
-              style={styles.buyButton}
-              onPress={handleBuy}
-              disabled={purchaseLoading}
-              activeOpacity={0.85}
-            >
-              {purchaseLoading ? (
-                <ActivityIndicator color="#fff" />
+            <>
+              {/* Coupon input */}
+              {!appliedCoupon ? (
+                <View style={styles.couponRow}>
+                  <TextInput
+                    style={styles.couponInput}
+                    placeholder="Enter coupon code"
+                    placeholderTextColor="#999"
+                    value={couponInput}
+                    onChangeText={t => setCouponInput(t)}
+                    autoCapitalize="none"
+                    returnKeyType="done"
+                    onSubmitEditing={handleApplyCoupon}
+                  />
+                  <TouchableOpacity
+                    style={styles.couponApplyBtn}
+                    onPress={handleApplyCoupon}
+                    disabled={couponLoading || !couponInput.trim()}
+                    activeOpacity={0.8}
+                  >
+                    {couponLoading
+                      ? <ActivityIndicator color="#fff" size="small" />
+                      : <Text style={styles.couponApplyText}>Apply</Text>}
+                  </TouchableOpacity>
+                </View>
               ) : (
-                <Text style={styles.buyButtonText}>Buy ₹{book.price_inr ?? 0}</Text>
+                <View style={styles.couponApplied}>
+                  <View style={styles.couponAppliedLeft}>
+                    <Ionicons name="pricetag" size={14} color="#16a34a" />
+                    <Text style={styles.couponAppliedCode}>{appliedCoupon.code}</Text>
+                    <Text style={styles.couponAppliedSaving}>-₹{appliedCoupon.discountAmount}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setAppliedCoupon(null)}>
+                    <Ionicons name="close-circle" size={18} color="#999" />
+                  </TouchableOpacity>
+                </View>
               )}
+
+              {/* Price summary */}
+              {appliedCoupon && (
+                <View style={styles.priceSummary}>
+                  <Text style={styles.priceOriginal}>₹{book.price_inr ?? 0}</Text>
+                  <Text style={styles.priceFinal}>₹{appliedCoupon.finalAmount}</Text>
+                </View>
+              )}
+
+              {/* Buy button row with wishlist */}
+              <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}>
+                <TouchableOpacity
+                  style={[styles.buyButton, { flex: 1 }]}
+                  onPress={handleBuy}
+                  disabled={purchaseLoading}
+                  activeOpacity={0.85}
+                >
+                  {purchaseLoading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.buyButtonText}>
+                      Buy ₹{appliedCoupon ? appliedCoupon.finalAmount : (book.price_inr ?? 0)}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }} onPress={handleWishlist}>
+                  <Ionicons name={inWishlist ? 'heart' : 'heart-outline'} size={32} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+          {isFreeOrPurchased && (
+            <TouchableOpacity style={{ position: 'absolute', right: spacing.md, top: 0, width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }} onPress={handleWishlist}>
+              <Ionicons name={inWishlist ? 'heart' : 'heart-outline'} size={32} color={colors.primary} />
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.iconButton} onPress={handleWishlist}>
-            <Ionicons name={inWishlist ? 'heart' : 'heart-outline'} size={32} color={colors.primary} />
-          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
